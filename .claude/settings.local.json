@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(node -e \"const {DatabaseSync} = require\\(''node:sqlite''\\); console.log\\(''node:sqlite available''\\);\")",
+      "Bash(node -e \":*)",
+      "Bash(node database/seed.js)",
+      "Bash(curl -s -X POST http://localhost:3000/api/auth/login -H \"Content-Type: application/json\" -d \"{\"\"email\"\":\"\"stuartbfong@gmail.com\"\",\"\"password\"\":\"\"athlete123\"\"}\")",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(timeout /t 1 /nobreak)",
+      "Bash(Start-Process -NoNewWindow -FilePath \"node\" -ArgumentList \"server.js\" -WorkingDirectory \"C:\\\\Users\\\\stuar\\\\OneDrive\\\\Documents\\\\PowerliftingDashboard\")",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(netstat -ano)",
+      "Bash(findstr \":3000\")",
+      "Bash(taskkill /PID 16344 /F)",
+      "Bash(cmd /c \"taskkill /PID 16344 /F\")",
+      "Bash(cmd /c \"taskkill /PID 16344 /F 2>&1\")",
+      "Bash(cmd /c 'taskkill /IM node.exe /F')",
+      "Bash(powershell -Command \"Stop-Process -Id 16344 -Force; Start-Sleep 1; Test-NetConnection -ComputerName localhost -Port 3000 -InformationLevel Quiet 2>&1\")",
+      "Bash(node -e \"const http = require\\(''http''\\); const req = http.get\\(''http://localhost:3000/'', res => { console.log\\(''Status:'', res.statusCode\\); res.destroy\\(\\); }\\); req.on\\(''error'', e => console.log\\(''Error:'', e.message\\)\\); req.setTimeout\\(2000, \\(\\) => { console.log\\(''Timeout''\\); req.destroy\\(\\); }\\);\")",
+      "Bash(powershell -Command \"Stop-Process -Name ''node'' -Force\")",
+      "Bash(node -e \"const http = require\\(''http''\\); const req = http.get\\(''http://localhost:3000/'', res => { console.log\\(''Status:'', res.statusCode\\); res.destroy\\(\\); }\\); req.on\\(''error'', e => console.log\\(''Error:'', e.message\\)\\); req.setTimeout\\(3000, \\(\\) => { console.log\\(''Timeout''\\); req.destroy\\(\\); }\\);\")",
+      "Bash(dir \"C:\\\\Users\\\\stuar\\\\OneDrive\\\\Documents\\\\PowerliftingDashboard\\\\public\\\\icons\")",
+      "Bash(psql --version)",
+      "Bash(pg_isready)"
+    ]
+  }
+}
