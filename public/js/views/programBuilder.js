@@ -47,6 +47,8 @@ export async function renderProgramBuilder(app, programId) {
   let program = await programAPI.getFull(programId);
   const athletes = await athleteAPI.list();
   const collapsed = new Set();
+  let tmpCounter = 0;
+  const tmpId = () => 'tmp_' + (++tmpCounter);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -72,6 +74,22 @@ export async function renderProgramBuilder(app, programId) {
       }
     }
     return null;
+  }
+
+  // Replace a temporary ID with the real server-assigned ID
+  function resolveTemp(tempId, realId) {
+    for (const w of program.weeks || []) {
+      if (String(w.id) === String(tempId)) { w.id = realId; return; }
+      for (const d of w.days || []) {
+        if (String(d.id) === String(tempId)) { d.id = realId; return; }
+        for (const ex of d.exercises || []) {
+          if (String(ex.id) === String(tempId)) { ex.id = realId; return; }
+          for (const s of ex.sets || []) {
+            if (String(s.id) === String(tempId)) { s.id = realId; return; }
+          }
+        }
+      }
+    }
   }
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -192,10 +210,7 @@ export async function renderProgramBuilder(app, programId) {
     if (!dragSet || !targetSet || dragSet.exId !== targetSet.exId) return;
     const dragOrder   = dragSet.set_order;
     const targetOrder = targetSet.set_order;
-    await Promise.all([
-      programAPI.updateSet(dragId,   { set_order: targetOrder }),
-      programAPI.updateSet(targetId, { set_order: dragOrder   })
-    ]);
+    const saved = structuredClone(program);
     for (const w of program.weeks || []) {
       for (const d of w.days || []) {
         for (const ex of d.exercises || []) {
@@ -208,6 +223,16 @@ export async function renderProgramBuilder(app, programId) {
       }
     }
     render();
+    try {
+      await Promise.all([
+        programAPI.updateSet(dragId,   { set_order: targetOrder }),
+        programAPI.updateSet(targetId, { set_order: dragOrder   })
+      ]);
+    } catch (err) {
+      program = saved;
+      render();
+      toast(err.message, 'error');
+    }
   }
 
   async function reorderExercises(dragId, targetId) {
@@ -216,10 +241,7 @@ export async function renderProgramBuilder(app, programId) {
     if (!dragInfo || !targetInfo || dragInfo.dayId !== targetInfo.dayId) return;
     const dragOrder   = dragInfo.ex.exercise_order;
     const targetOrder = targetInfo.ex.exercise_order;
-    await Promise.all([
-      programAPI.updateExercise(dragId,   { exercise_order: targetOrder }),
-      programAPI.updateExercise(targetId, { exercise_order: dragOrder   })
-    ]);
+    const saved = structuredClone(program);
     for (const w of program.weeks || []) {
       for (const d of w.days || []) {
         for (const ex of d.exercises || []) {
@@ -230,6 +252,16 @@ export async function renderProgramBuilder(app, programId) {
       }
     }
     render();
+    try {
+      await Promise.all([
+        programAPI.updateExercise(dragId,   { exercise_order: targetOrder }),
+        programAPI.updateExercise(targetId, { exercise_order: dragOrder   })
+      ]);
+    } catch (err) {
+      program = saved;
+      render();
+      toast(err.message, 'error');
+    }
   }
 
   // ── Attach listeners ─────────────────────────────────────────────────────
@@ -258,41 +290,57 @@ export async function renderProgramBuilder(app, programId) {
         const week = program.weeks.find(w => String(w.id) === weekId);
         const dayNum = (week?.days?.length || 0) + 1;
         const label = prompt(`Day ${dayNum} label (e.g. Monday, Upper):`, `Day ${dayNum}`) ?? `Day ${dayNum}`;
+        const saved = structuredClone(program);
+        const tempDay = { id: tmpId(), week_id: weekId, day_number: dayNum, label, exercises: [] };
+        const targetWeek = program.weeks.find(w => String(w.id) === String(weekId));
+        if (!targetWeek.days) targetWeek.days = [];
+        targetWeek.days.push(tempDay);
+        render();
         try {
           const day = await programAPI.addDay(weekId, { day_number: dayNum, label });
-          const targetWeek = program.weeks.find(w => String(w.id) === String(weekId));
-          if (targetWeek) {
-            if (!targetWeek.days) targetWeek.days = [];
-            targetWeek.days.push({ ...day, exercises: [] });
-          }
+          resolveTemp(tempDay.id, day.id);
           render();
-        } catch (err) { toast(err.message, 'error'); }
+        } catch (err) {
+          program = saved;
+          render();
+          toast(err.message, 'error');
+        }
       });
     });
 
     app.querySelectorAll('.del-week-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         if (!confirm('Delete this week and all its days and exercises?')) return;
+        const saved = structuredClone(program);
+        program.weeks = program.weeks.filter(w => String(w.id) !== String(btn.dataset.weekId));
+        render();
+        toast('Week deleted', 'success');
         try {
           await programAPI.deleteWeek(btn.dataset.weekId);
-          program.weeks = program.weeks.filter(w => String(w.id) !== String(btn.dataset.weekId));
+        } catch (err) {
+          program = saved;
           render();
-          toast('Week deleted', 'success');
-        } catch (err) { toast(err.message, 'error'); }
+          toast(err.message, 'error');
+        }
       });
     });
 
     app.querySelectorAll('.del-day-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         if (!confirm('Delete this day and all its exercises?')) return;
+        const saved = structuredClone(program);
+        for (const w of program.weeks || []) {
+          w.days = (w.days || []).filter(d => String(d.id) !== String(btn.dataset.dayId));
+        }
+        render();
+        toast('Day deleted', 'success');
         try {
           await programAPI.deleteDay(btn.dataset.dayId);
-          for (const w of program.weeks || []) {
-            w.days = (w.days || []).filter(d => String(d.id) !== String(btn.dataset.dayId));
-          }
+        } catch (err) {
+          program = saved;
           render();
-          toast('Day deleted', 'success');
-        } catch (err) { toast(err.message, 'error'); }
+          toast(err.message, 'error');
+        }
       });
     });
 
@@ -304,16 +352,21 @@ export async function renderProgramBuilder(app, programId) {
       btn.addEventListener('click', async e => {
         e.stopPropagation();
         if (!confirm('Delete this exercise?')) return;
+        const saved = structuredClone(program);
+        for (const w of program.weeks || []) {
+          for (const d of w.days || []) {
+            d.exercises = (d.exercises || []).filter(ex => String(ex.id) !== String(btn.dataset.exId));
+          }
+        }
+        render();
+        toast('Exercise deleted', 'success');
         try {
           await programAPI.deleteExercise(btn.dataset.exId);
-          for (const w of program.weeks || []) {
-            for (const d of w.days || []) {
-              d.exercises = (d.exercises || []).filter(ex => String(ex.id) !== String(btn.dataset.exId));
-            }
-          }
+        } catch (err) {
+          program = saved;
           render();
-          toast('Exercise deleted', 'success');
-        } catch (err) { toast(err.message, 'error'); }
+          toast(err.message, 'error');
+        }
       });
     });
 
@@ -327,17 +380,22 @@ export async function renderProgramBuilder(app, programId) {
     app.querySelectorAll('.del-set-btn').forEach(btn => {
       btn.addEventListener('click', async e => {
         e.stopPropagation();
-        try {
-          await programAPI.deleteSet(btn.dataset.setId);
-          for (const w of program.weeks || []) {
-            for (const d of w.days || []) {
-              for (const ex of d.exercises || []) {
-                ex.sets = (ex.sets || []).filter(s => String(s.id) !== String(btn.dataset.setId));
-              }
+        const saved = structuredClone(program);
+        for (const w of program.weeks || []) {
+          for (const d of w.days || []) {
+            for (const ex of d.exercises || []) {
+              ex.sets = (ex.sets || []).filter(s => String(s.id) !== String(btn.dataset.setId));
             }
           }
+        }
+        render();
+        try {
+          await programAPI.deleteSet(btn.dataset.setId);
+        } catch (err) {
+          program = saved;
           render();
-        } catch (err) { toast(err.message, 'error'); }
+          toast(err.message, 'error');
+        }
       });
     });
 
@@ -353,7 +411,7 @@ export async function renderProgramBuilder(app, programId) {
     // Exercise drag-and-drop
     app.querySelectorAll('.program-exercise[draggable]').forEach(el => {
       el.addEventListener('dragstart', e => {
-        if (e.target.closest('.program-set-row')) return; // let set drag handle it
+        if (e.target.closest('.program-set-row')) return;
         dragState = { type: 'exercise', id: el.dataset.exId, sourceEl: el };
         el.classList.add('dragging');
         e.dataTransfer.effectAllowed = 'move';
@@ -404,20 +462,27 @@ export async function renderProgramBuilder(app, programId) {
 
   async function createEmptyWeek() {
     const weekNum = (program.weeks?.length || 0) + 1;
+    const saved = structuredClone(program);
+    const tempWeek = { id: tmpId(), program_id: programId, week_number: weekNum, label: '', days: [] };
+    if (!program.weeks) program.weeks = [];
+    program.weeks.push(tempWeek);
+    render();
+    toast(`Week ${weekNum} added`, 'success');
     try {
       const week = await programAPI.addWeek(programId, { week_number: weekNum, label: '' });
-      if (!program.weeks) program.weeks = [];
-      program.weeks.push({ ...week, days: [] });
+      resolveTemp(tempWeek.id, week.id);
       render();
-      toast(`Week ${weekNum} added`, 'success');
-    } catch (err) { toast(err.message, 'error'); }
+    } catch (err) {
+      program = saved;
+      render();
+      toast(err.message, 'error');
+    }
   }
 
   function showCopyWeekModal() {
     const lastWeek    = program.weeks[program.weeks.length - 1];
     const nextWeekNum = (program.weeks?.length || 0) + 1;
 
-    // Collect unique exercise names from last week
     const exercises = [];
     for (const day of lastWeek.days || []) {
       for (const ex of day.exercises || []) {
@@ -476,6 +541,9 @@ export async function renderProgramBuilder(app, programId) {
             exerciseIncrements[activeBtn.dataset.exName] = parseFloat(activeBtn.dataset.inc);
           }
         });
+        const saveBtn = bd.querySelector('.save-modal-btn');
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Copying…';
         try {
           const newWeek = await programAPI.copyWeek(programId, lastWeek.id, exerciseIncrements);
           if (!program.weeks) program.weeks = [];
@@ -483,7 +551,11 @@ export async function renderProgramBuilder(app, programId) {
           bd.remove();
           render();
           toast(`Week ${nextWeekNum} added (copied from Week ${lastWeek.week_number})`, 'success');
-        } catch (err) { toast(err.message, 'error'); }
+        } catch (err) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Add Week';
+          toast(err.message, 'error');
+        }
       } else {
         bd.remove();
         createEmptyWeek();
@@ -558,49 +630,87 @@ export async function renderProgramBuilder(app, programId) {
         <input type="text" class="form-control" id="set-notes" placeholder="Pause on chest…" value="${existingSet?.notes ?? ''}">
       </div>
     `, async () => {
+      // Read all form values before closing
+      const setType    = bd.querySelector('#set-type').value;
+      const reps       = parseInt(bd.querySelector('#set-reps').value) || 4;
+      const targetRpe  = bd.querySelector('#set-rpe-hidden').value || null;
+      const notes      = bd.querySelector('#set-notes').value;
+      const shorthand  = !isEdit ? bd.querySelector('#set-shorthand').value.trim() : null;
+      const parsedSets = parseShorthand(shorthand);
+
+      const saved = structuredClone(program);
       const target = program.weeks?.flatMap(w => w.days || [])
         .flatMap(d => d.exercises || [])
         .find(e => String(e.id) === String(exId));
+
       if (!isEdit) {
-        const shorthand  = bd.querySelector('#set-shorthand').value.trim();
-        const parsedSets = parseShorthand(shorthand);
         if (parsedSets?.length) {
           const baseOrder = (ex?.sets?.length || 0);
-          const newSets = await Promise.all(
-            parsedSets.map((s, i) => programAPI.addSet(exId, { ...s, set_order: baseOrder + i }))
-          );
-          if (target) { if (!target.sets) target.sets = []; target.sets.push(...newSets); }
+          const tempSets = parsedSets.map((s, i) => ({
+            ...s, id: tmpId(), exercise_id: exId, set_order: baseOrder + i
+          }));
+          if (target) { if (!target.sets) target.sets = []; target.sets.push(...tempSets); }
+          bd.remove();
+          render();
           toast(`${parsedSets.length} sets added`, 'success');
+          try {
+            const newSets = await Promise.all(
+              parsedSets.map((s, i) => programAPI.addSet(exId, { ...s, set_order: baseOrder + i }))
+            );
+            tempSets.forEach((ts, i) => resolveTemp(ts.id, newSets[i].id));
+            render();
+          } catch (err) {
+            program = saved;
+            render();
+            toast(err.message, 'error');
+          }
         } else {
           const setOrder = (ex?.sets?.length || 0);
-          const newSet = await programAPI.addSet(exId, {
-            set_type:   bd.querySelector('#set-type').value,
-            reps:       parseInt(bd.querySelector('#set-reps').value) || 4,
-            target_rpe: bd.querySelector('#set-rpe-hidden').value || null,
-            set_order:  setOrder,
-            notes:      bd.querySelector('#set-notes').value
-          });
-          if (target) { if (!target.sets) target.sets = []; target.sets.push(newSet); }
+          const tempSet = { id: tmpId(), exercise_id: exId, set_type: setType, reps, target_rpe: targetRpe, notes, set_order: setOrder };
+          if (target) { if (!target.sets) target.sets = []; target.sets.push(tempSet); }
+          bd.remove();
+          render();
+          try {
+            const newSet = await programAPI.addSet(exId, { set_type: setType, reps, target_rpe: targetRpe, set_order: setOrder, notes });
+            resolveTemp(tempSet.id, newSet.id);
+            render();
+          } catch (err) {
+            program = saved;
+            render();
+            toast(err.message, 'error');
+          }
         }
       } else {
-        const updatedSet = await programAPI.updateSet(existingSet.id, {
-          set_type:   bd.querySelector('#set-type').value,
-          reps:       parseInt(bd.querySelector('#set-reps').value) || 4,
-          target_rpe: bd.querySelector('#set-rpe-hidden').value || null,
-          notes:      bd.querySelector('#set-notes').value
-        });
+        // Edit: apply optimistically, close modal immediately, sync in background
+        const optimisticSet = { ...existingSet, set_type: setType, reps, target_rpe: targetRpe ? parseFloat(targetRpe) : null, notes };
         for (const w of program.weeks || []) {
           for (const d of w.days || []) {
             for (const ex2 of d.exercises || []) {
               const idx = ex2.sets?.findIndex(s => String(s.id) === String(existingSet.id));
-              if (idx !== undefined && idx >= 0) ex2.sets[idx] = updatedSet;
+              if (idx !== undefined && idx >= 0) ex2.sets[idx] = optimisticSet;
             }
           }
         }
+        bd.remove();
+        render();
         toast('Set updated', 'success');
+        try {
+          const updatedSet = await programAPI.updateSet(existingSet.id, { set_type: setType, reps, target_rpe: targetRpe, notes });
+          for (const w of program.weeks || []) {
+            for (const d of w.days || []) {
+              for (const ex2 of d.exercises || []) {
+                const idx = ex2.sets?.findIndex(s => String(s.id) === String(existingSet.id));
+                if (idx !== undefined && idx >= 0) ex2.sets[idx] = updatedSet;
+              }
+            }
+          }
+          render();
+        } catch (err) {
+          program = saved;
+          render();
+          toast(err.message, 'error');
+        }
       }
-      bd.remove();
-      render();
     }, isEdit ? 'Save Changes' : 'Save');
 
     // RPE picker
@@ -642,32 +752,53 @@ export async function renderProgramBuilder(app, programId) {
       const name = bd.querySelector('#ex-name').value.trim();
       if (!name) return toast('Enter exercise name', 'error');
 
-      const ex = await programAPI.addExercise(dayId, {
-        name,
-        notes: bd.querySelector('#ex-notes').value
-      });
-
+      const notes      = bd.querySelector('#ex-notes').value;
       const shorthand  = bd.querySelector('#ex-shorthand').value.trim();
       const parsedSets = parseShorthand(shorthand);
-      if (parsedSets?.length) {
-        const newSets = await Promise.all(
-          parsedSets.map((s, i) => programAPI.addSet(ex.id, { ...s, set_order: i }))
-        );
-        ex.sets = newSets;
+
+      const saved = structuredClone(program);
+
+      // Determine exercise_order for the new exercise
+      let exOrder = 0;
+      for (const w of program.weeks || []) {
+        for (const d of w.days || []) {
+          if (String(d.id) === String(dayId)) exOrder = d.exercises?.length || 0;
+        }
       }
+
+      const tempExId = tmpId();
+      const tempSets = parsedSets?.map((s, i) => ({ ...s, id: tmpId(), set_order: i })) || [];
+      const tempEx = { id: tempExId, day_id: dayId, exercise_order: exOrder, name, notes, sets: tempSets };
 
       for (const w of program.weeks || []) {
         for (const d of w.days || []) {
           if (String(d.id) === String(dayId)) {
             if (!d.exercises) d.exercises = [];
-            d.exercises.push(ex);
+            d.exercises.push(tempEx);
             break;
           }
         }
       }
+
       bd.remove();
       render();
       toast(`${name} added${parsedSets?.length ? ` with ${parsedSets.length} sets` : ''}`, 'success');
+
+      try {
+        const ex = await programAPI.addExercise(dayId, { name, notes });
+        resolveTemp(tempExId, ex.id);
+        if (parsedSets?.length) {
+          const newSets = await Promise.all(
+            parsedSets.map((s, i) => programAPI.addSet(ex.id, { ...s, set_order: i }))
+          );
+          tempSets.forEach((ts, i) => resolveTemp(ts.id, newSets[i].id));
+        }
+        render();
+      } catch (err) {
+        program = saved;
+        render();
+        toast(err.message, 'error');
+      }
     });
 
     bd.querySelectorAll('.ex-template-btn').forEach(btn => {
@@ -689,11 +820,18 @@ export async function renderProgramBuilder(app, programId) {
       <p style="font-size:0.82rem;color:var(--text-muted);margin-top:8px">This will set the program as the athlete's active program.</p>
     `, async () => {
       const athleteId = bd.querySelector('#assign-athlete').value;
-      const updated = await programAPI.assign(programId, athleteId);
-      program.athlete_id = updated.athlete_id;
+      const saved = structuredClone(program);
+      program.athlete_id = parseInt(athleteId);
       bd.remove();
       toast('Program assigned!', 'success');
       render();
+      try {
+        await programAPI.assign(programId, athleteId);
+      } catch (err) {
+        program = saved;
+        render();
+        toast(err.message, 'error');
+      }
     });
   }
 

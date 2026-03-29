@@ -22,7 +22,7 @@ export function renderNavbar(user) {
   mount.innerHTML = `
     <nav class="navbar">
       <a class="navbar-brand" href="${user.role === 'coach' ? '#/coach' : '#/dashboard'}">
-        <span class="brand-accent">G5</span> POWERLIFTING
+        <span class="brand-accent">STRENGTH</span>TRACK
       </a>
       <div class="navbar-links">
         ${links.map(l => `
