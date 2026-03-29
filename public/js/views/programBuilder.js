@@ -14,19 +14,19 @@ const EXERCISE_TEMPLATES = [
   'Box Squat'
 ];
 
+const MAIN_LIFT_RE = /squat|bench|deadlift|press/i;
+
 // Parse shorthand like "Top x2 + 3x4@8 + 2x4@7.5"
 function parseShorthand(text) {
   if (!text?.trim()) return null;
   const sets = [];
   const parts = text.split('+').map(s => s.trim());
   for (const part of parts) {
-    // Top set: "Top x2" or "Top x2@8"
     const topMatch = part.match(/^top\s+x(\d+)(?:@([\d.]+))?$/i);
     if (topMatch) {
       sets.push({ set_type: 'top', reps: parseInt(topMatch[1]), target_rpe: topMatch[2] ? parseFloat(topMatch[2]) : null });
       continue;
     }
-    // Backdown: "3x4@8" or "4@7.5" (count x reps @ rpe)
     const bdMatch = part.match(/^(\d+)x(\d+)(?:@([\d.]+))?$/i);
     if (bdMatch) {
       const count = parseInt(bdMatch[1]);
@@ -35,7 +35,6 @@ function parseShorthand(text) {
       }
       continue;
     }
-    // Single set: "4@8"
     const singleMatch = part.match(/^(\d+)@([\d.]+)$/i);
     if (singleMatch) {
       sets.push({ set_type: 'backdown', reps: parseInt(singleMatch[1]), target_rpe: parseFloat(singleMatch[2]) });
@@ -47,6 +46,35 @@ function parseShorthand(text) {
 export async function renderProgramBuilder(app, programId) {
   let program = await programAPI.getFull(programId);
   const athletes = await athleteAPI.list();
+  const collapsed = new Set();
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  function findSetById(setId) {
+    for (const w of program.weeks || []) {
+      for (const d of w.days || []) {
+        for (const ex of d.exercises || []) {
+          for (const s of ex.sets || []) {
+            if (String(s.id) === String(setId)) return { ...s, exId: String(ex.id) };
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  function findExById(exId) {
+    for (const w of program.weeks || []) {
+      for (const d of w.days || []) {
+        for (const ex of d.exercises || []) {
+          if (String(ex.id) === String(exId)) return { ex, dayId: String(d.id) };
+        }
+      }
+    }
+    return null;
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────
 
   function render() {
     const assignedAthlete = athletes.find(a => a.id === program.athlete_id);
@@ -79,60 +107,73 @@ export async function renderProgramBuilder(app, programId) {
   }
 
   function renderWeekSection(week) {
+    const key = 'w' + week.id;
+    const isCollapsed = collapsed.has(key);
     return `
-      <div class="program-week" id="pw-${week.id}">
+      <div class="program-week${isCollapsed ? ' collapsed' : ''}" id="pw-${week.id}">
         <div class="program-week-header">
+          <button class="collapse-btn" data-key="${key}" title="${isCollapsed ? 'Expand' : 'Collapse'}">${isCollapsed ? '▶' : '▼'}</button>
           <span class="program-week-title">Week ${week.week_number}${week.label ? ' — ' + week.label : ''}</span>
-          <div style="display:flex;gap:8px">
+          <div style="display:flex;gap:8px;margin-left:auto">
             <button class="btn btn-primary btn-sm add-day-btn" data-week-id="${week.id}">+ Day</button>
             <button class="btn btn-ghost btn-sm del-week-btn" data-week-id="${week.id}" title="Delete Week">✕</button>
           </div>
         </div>
-        <div id="pw-days-${week.id}">
+        <div class="pw-days-content">
           ${week.days?.map(d => renderDaySection(d)).join('') || ''}
         </div>
       </div>`;
   }
 
   function renderDaySection(day) {
+    const key = 'd' + day.id;
+    const isCollapsed = collapsed.has(key);
     return `
-      <div class="program-day" id="pd-${day.id}">
+      <div class="program-day${isCollapsed ? ' collapsed' : ''}" id="pd-${day.id}">
         <div class="program-day-header">
+          <button class="collapse-btn" data-key="${key}" title="${isCollapsed ? 'Expand' : 'Collapse'}">${isCollapsed ? '▶' : '▼'}</button>
           <span class="program-day-title">Day ${day.day_number}${day.label ? ' — ' + day.label : ''}</span>
-          <div style="display:flex;gap:8px">
+          <div style="display:flex;gap:8px;margin-left:auto">
             <button class="btn btn-secondary btn-sm add-ex-btn" data-day-id="${day.id}">+ Exercise</button>
             <button class="btn btn-ghost btn-sm del-day-btn" data-day-id="${day.id}" title="Delete Day">✕</button>
           </div>
         </div>
-        <div id="pd-exercises-${day.id}" style="padding:0 0 8px 0">
+        <div class="pd-exercises-content">
           ${day.exercises?.map(ex => renderExercise(ex)).join('') || '<div style="padding:10px 40px;color:var(--text-muted);font-size:0.82rem">No exercises</div>'}
         </div>
       </div>`;
   }
 
   function renderExercise(ex) {
+    const key = 'e' + ex.id;
+    const isCollapsed = collapsed.has(key);
     return `
-      <div class="program-exercise" id="pex-${ex.id}">
+      <div class="program-exercise${isCollapsed ? ' collapsed' : ''}" id="pex-${ex.id}" draggable="true" data-ex-id="${ex.id}">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <div class="program-exercise-name">${ex.name}</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="drag-handle" title="Drag to reorder">⠿</span>
+            <button class="collapse-btn" data-key="${key}" title="${isCollapsed ? 'Expand' : 'Collapse'}">${isCollapsed ? '▶' : '▼'}</button>
+            <div class="program-exercise-name">${ex.name}</div>
+          </div>
           <div style="display:flex;gap:6px">
             <button class="btn btn-secondary btn-sm add-set-btn" data-ex-id="${ex.id}">+ Set</button>
             <button class="btn btn-ghost btn-sm del-ex-btn" data-ex-id="${ex.id}" title="Delete Exercise">✕</button>
           </div>
         </div>
-        <div id="pex-sets-${ex.id}">
+        <div class="pex-sets-content" id="pex-sets-${ex.id}">
           ${ex.sets?.length
-            ? ex.sets.map((s, i) => renderSet(s, i)).join('')
+            ? ex.sets.map((s, i) => renderSet(s, i, ex.id)).join('')
             : '<div style="color:var(--text-muted);font-size:0.8rem">No sets — use shorthand below or "+ Set"</div>'}
         </div>
       </div>`;
   }
 
-  function renderSet(s, i) {
+  function renderSet(s, i, exId) {
     const isTop = s.set_type === 'top';
     const label = isTop ? 'Top' : `BD ${i}`;
     return `
-      <div class="program-set-row" id="ps-${s.id}">
+      <div class="program-set-row" id="ps-${s.id}" data-set-id="${s.id}" data-ex-id="${exId}" draggable="true" title="Click to edit, drag to reorder">
+        <span class="drag-handle" title="Drag to reorder">⠿</span>
         <span class="tag ${isTop ? 'tag-top' : 'tag-backdown'}">${label}</span>
         <span style="color:var(--text-secondary)">${s.reps} rep${s.reps !== 1 ? 's' : ''}</span>
         ${s.target_rpe ? `<span class="badge badge-muted">@${s.target_rpe} RPE</span>` : ''}
@@ -141,17 +182,75 @@ export async function renderProgramBuilder(app, programId) {
       </div>`;
   }
 
-  function attachListeners() {
-    // Add week — smart modal if weeks exist
-    document.getElementById('add-week-btn').addEventListener('click', () => {
-      if (program.weeks?.length > 0) {
-        showCopyWeekModal();
-      } else {
-        createEmptyWeek();
+  // ── Drag-and-drop ────────────────────────────────────────────────────────
+
+  let dragState = { type: null, id: null, sourceEl: null };
+
+  async function reorderSets(dragId, targetId) {
+    const dragSet   = findSetById(dragId);
+    const targetSet = findSetById(targetId);
+    if (!dragSet || !targetSet || dragSet.exId !== targetSet.exId) return;
+    const dragOrder   = dragSet.set_order;
+    const targetOrder = targetSet.set_order;
+    await Promise.all([
+      programAPI.updateSet(dragId,   { set_order: targetOrder }),
+      programAPI.updateSet(targetId, { set_order: dragOrder   })
+    ]);
+    for (const w of program.weeks || []) {
+      for (const d of w.days || []) {
+        for (const ex of d.exercises || []) {
+          for (const s of ex.sets || []) {
+            if (String(s.id) === String(dragId))   s.set_order = targetOrder;
+            if (String(s.id) === String(targetId)) s.set_order = dragOrder;
+          }
+          ex.sets.sort((a, b) => a.set_order - b.set_order);
+        }
       }
+    }
+    render();
+  }
+
+  async function reorderExercises(dragId, targetId) {
+    const dragInfo   = findExById(dragId);
+    const targetInfo = findExById(targetId);
+    if (!dragInfo || !targetInfo || dragInfo.dayId !== targetInfo.dayId) return;
+    const dragOrder   = dragInfo.ex.exercise_order;
+    const targetOrder = targetInfo.ex.exercise_order;
+    await Promise.all([
+      programAPI.updateExercise(dragId,   { exercise_order: targetOrder }),
+      programAPI.updateExercise(targetId, { exercise_order: dragOrder   })
+    ]);
+    for (const w of program.weeks || []) {
+      for (const d of w.days || []) {
+        for (const ex of d.exercises || []) {
+          if (String(ex.id) === String(dragId))   ex.exercise_order = targetOrder;
+          if (String(ex.id) === String(targetId)) ex.exercise_order = dragOrder;
+        }
+        d.exercises.sort((a, b) => a.exercise_order - b.exercise_order);
+      }
+    }
+    render();
+  }
+
+  // ── Attach listeners ─────────────────────────────────────────────────────
+
+  function attachListeners() {
+    document.getElementById('add-week-btn').addEventListener('click', () => {
+      if (program.weeks?.length > 0) showCopyWeekModal();
+      else createEmptyWeek();
     });
 
     document.getElementById('assign-btn')?.addEventListener('click', () => showAssignModal());
+
+    // Collapse toggles
+    app.querySelectorAll('.collapse-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const key = btn.dataset.key;
+        if (collapsed.has(key)) collapsed.delete(key); else collapsed.add(key);
+        render();
+      });
+    });
 
     app.querySelectorAll('.add-day-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
@@ -160,8 +259,12 @@ export async function renderProgramBuilder(app, programId) {
         const dayNum = (week?.days?.length || 0) + 1;
         const label = prompt(`Day ${dayNum} label (e.g. Monday, Upper):`, `Day ${dayNum}`) ?? `Day ${dayNum}`;
         try {
-          await programAPI.addDay(weekId, { day_number: dayNum, label });
-          program = await programAPI.getFull(programId);
+          const day = await programAPI.addDay(weekId, { day_number: dayNum, label });
+          const targetWeek = program.weeks.find(w => String(w.id) === String(weekId));
+          if (targetWeek) {
+            if (!targetWeek.days) targetWeek.days = [];
+            targetWeek.days.push({ ...day, exercises: [] });
+          }
           render();
         } catch (err) { toast(err.message, 'error'); }
       });
@@ -172,7 +275,7 @@ export async function renderProgramBuilder(app, programId) {
         if (!confirm('Delete this week and all its days and exercises?')) return;
         try {
           await programAPI.deleteWeek(btn.dataset.weekId);
-          program = await programAPI.getFull(programId);
+          program.weeks = program.weeks.filter(w => String(w.id) !== String(btn.dataset.weekId));
           render();
           toast('Week deleted', 'success');
         } catch (err) { toast(err.message, 'error'); }
@@ -184,7 +287,9 @@ export async function renderProgramBuilder(app, programId) {
         if (!confirm('Delete this day and all its exercises?')) return;
         try {
           await programAPI.deleteDay(btn.dataset.dayId);
-          program = await programAPI.getFull(programId);
+          for (const w of program.weeks || []) {
+            w.days = (w.days || []).filter(d => String(d.id) !== String(btn.dataset.dayId));
+          }
           render();
           toast('Day deleted', 'success');
         } catch (err) { toast(err.message, 'error'); }
@@ -196,11 +301,16 @@ export async function renderProgramBuilder(app, programId) {
     });
 
     app.querySelectorAll('.del-ex-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
         if (!confirm('Delete this exercise?')) return;
         try {
           await programAPI.deleteExercise(btn.dataset.exId);
-          program = await programAPI.getFull(programId);
+          for (const w of program.weeks || []) {
+            for (const d of w.days || []) {
+              d.exercises = (d.exercises || []).filter(ex => String(ex.id) !== String(btn.dataset.exId));
+            }
+          }
           render();
           toast('Exercise deleted', 'success');
         } catch (err) { toast(err.message, 'error'); }
@@ -208,33 +318,126 @@ export async function renderProgramBuilder(app, programId) {
     });
 
     app.querySelectorAll('.add-set-btn').forEach(btn => {
-      btn.addEventListener('click', () => showAddSetModal(btn.dataset.exId));
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        showSetModal(btn.dataset.exId);
+      });
     });
 
     app.querySelectorAll('.del-set-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async e => {
+        e.stopPropagation();
         try {
           await programAPI.deleteSet(btn.dataset.setId);
-          program = await programAPI.getFull(programId);
+          for (const w of program.weeks || []) {
+            for (const d of w.days || []) {
+              for (const ex of d.exercises || []) {
+                ex.sets = (ex.sets || []).filter(s => String(s.id) !== String(btn.dataset.setId));
+              }
+            }
+          }
           render();
         } catch (err) { toast(err.message, 'error'); }
       });
     });
+
+    // Click set row to edit
+    app.querySelectorAll('.program-set-row').forEach(row => {
+      row.addEventListener('click', e => {
+        if (e.target.closest('.del-set-btn') || e.target.closest('.drag-handle')) return;
+        const set = findSetById(row.dataset.setId);
+        if (set) showSetModal(set.exId, set);
+      });
+    });
+
+    // Exercise drag-and-drop
+    app.querySelectorAll('.program-exercise[draggable]').forEach(el => {
+      el.addEventListener('dragstart', e => {
+        if (e.target.closest('.program-set-row')) return; // let set drag handle it
+        dragState = { type: 'exercise', id: el.dataset.exId, sourceEl: el };
+        el.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.stopPropagation();
+      });
+      el.addEventListener('dragend', () => el.classList.remove('dragging'));
+      el.addEventListener('dragover', e => {
+        if (dragState.type !== 'exercise') return;
+        e.preventDefault();
+        el.classList.add('drag-over');
+      });
+      el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+      el.addEventListener('drop', async e => {
+        e.preventDefault();
+        el.classList.remove('drag-over');
+        if (dragState.type !== 'exercise' || dragState.id === el.dataset.exId) return;
+        try { await reorderExercises(dragState.id, el.dataset.exId); }
+        catch (err) { toast(err.message, 'error'); }
+      });
+    });
+
+    // Set drag-and-drop
+    app.querySelectorAll('.program-set-row[draggable]').forEach(el => {
+      el.addEventListener('dragstart', e => {
+        dragState = { type: 'set', id: el.dataset.setId, sourceEl: el };
+        el.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.stopPropagation();
+      });
+      el.addEventListener('dragend', () => el.classList.remove('dragging'));
+      el.addEventListener('dragover', e => {
+        if (dragState.type !== 'set') return;
+        e.preventDefault();
+        el.classList.add('drag-over');
+      });
+      el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+      el.addEventListener('drop', async e => {
+        e.preventDefault();
+        el.classList.remove('drag-over');
+        if (dragState.type !== 'set' || dragState.id === el.dataset.setId) return;
+        try { await reorderSets(dragState.id, el.dataset.setId); }
+        catch (err) { toast(err.message, 'error'); }
+      });
+    });
   }
+
+  // ── Week actions ─────────────────────────────────────────────────────────
 
   async function createEmptyWeek() {
     const weekNum = (program.weeks?.length || 0) + 1;
     try {
-      await programAPI.addWeek(programId, { week_number: weekNum, label: '' });
-      program = await programAPI.getFull(programId);
+      const week = await programAPI.addWeek(programId, { week_number: weekNum, label: '' });
+      if (!program.weeks) program.weeks = [];
+      program.weeks.push({ ...week, days: [] });
       render();
       toast(`Week ${weekNum} added`, 'success');
     } catch (err) { toast(err.message, 'error'); }
   }
 
   function showCopyWeekModal() {
-    const lastWeek = program.weeks[program.weeks.length - 1];
+    const lastWeek    = program.weeks[program.weeks.length - 1];
     const nextWeekNum = (program.weeks?.length || 0) + 1;
+
+    // Collect unique exercise names from last week
+    const exercises = [];
+    for (const day of lastWeek.days || []) {
+      for (const ex of day.exercises || []) {
+        if (!exercises.find(e => e.name === ex.name)) exercises.push(ex);
+      }
+    }
+
+    const exRowsHtml = exercises.map(ex => {
+      const defaultInc = MAIN_LIFT_RE.test(ex.name) ? 1 : 0;
+      return `
+        <div class="copy-week-ex-row">
+          <span class="copy-week-ex-name">${ex.name}</span>
+          <div class="rpe-increment-btns">
+            ${[0, 0.5, 1].map(v => `
+              <button type="button" class="btn btn-secondary btn-sm inc-btn ${defaultInc === v ? 'active' : ''}"
+                data-ex-name="${ex.name}" data-inc="${v}">${v === 0 ? '±0' : '+' + v}</button>
+            `).join('')}
+          </div>
+        </div>`;
+    }).join('');
 
     const bd = createModal('Add Week', `
       <p style="color:var(--text-secondary);margin-bottom:16px;font-size:0.9rem">
@@ -245,7 +448,7 @@ export async function renderProgramBuilder(app, programId) {
         <label class="copy-week-option selected" id="opt-copy">
           <input type="radio" name="week-type" value="copy" checked style="display:none">
           <div class="copy-week-option-title">📋 Copy Week ${lastWeek.week_number}</div>
-          <div class="copy-week-option-desc">Copies all days, exercises &amp; sets. Increases RPE on main lifts.</div>
+          <div class="copy-week-option-desc">Copies all days, exercises &amp; sets.</div>
         </label>
         <label class="copy-week-option" id="opt-empty">
           <input type="radio" name="week-type" value="empty" style="display:none">
@@ -255,28 +458,31 @@ export async function renderProgramBuilder(app, programId) {
       </div>
 
       <div id="copy-options" style="margin-top:16px">
-        <div class="form-group">
-          <label class="form-label">RPE Increment on Main Lifts</label>
-          <div class="rpe-increment-btns">
-            ${[0, 0.5, 1].map(v => `
-              <button type="button" class="btn btn-secondary inc-btn ${v === 0.5 ? 'active' : ''}" data-inc="${v}">
-                ${v === 0 ? 'None' : '+' + v}
-              </button>`).join('')}
+        ${exercises.length ? `
+          <div class="form-group">
+            <label class="form-label">RPE Increment per Exercise</label>
+            <div class="copy-week-exercises">${exRowsHtml}</div>
           </div>
-          <div class="form-hint">Main lifts: exercises containing Squat, Bench, Deadlift, Press</div>
-        </div>
+        ` : ''}
       </div>
     `, async () => {
       const type = bd.querySelector('input[name="week-type"]:checked')?.value;
-      const inc  = parseFloat(bd.querySelector('.inc-btn.active')?.dataset.inc ?? 0.5);
 
       if (type === 'copy') {
+        const exerciseIncrements = {};
+        bd.querySelectorAll('.copy-week-ex-row').forEach(row => {
+          const activeBtn = row.querySelector('.inc-btn.active');
+          if (activeBtn) {
+            exerciseIncrements[activeBtn.dataset.exName] = parseFloat(activeBtn.dataset.inc);
+          }
+        });
         try {
-          await programAPI.copyWeek(programId, lastWeek.id, inc);
-          program = await programAPI.getFull(programId);
+          const newWeek = await programAPI.copyWeek(programId, lastWeek.id, exerciseIncrements);
+          if (!program.weeks) program.weeks = [];
+          program.weeks.push(newWeek);
           bd.remove();
           render();
-          toast(`Week ${nextWeekNum} added (copied from Week ${lastWeek.week_number}${inc > 0 ? `, RPE +${inc}` : ''})`, 'success');
+          toast(`Week ${nextWeekNum} added (copied from Week ${lastWeek.week_number})`, 'success');
         } catch (err) { toast(err.message, 'error'); }
       } else {
         bd.remove();
@@ -295,14 +501,119 @@ export async function renderProgramBuilder(app, programId) {
       });
     });
 
-    // RPE increment buttons
+    // Per-exercise RPE increment toggle
     bd.querySelectorAll('.inc-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        bd.querySelectorAll('.inc-btn').forEach(b => b.classList.remove('active'));
+        const row = btn.closest('.copy-week-ex-row');
+        row.querySelectorAll('.inc-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
       });
     });
   }
+
+  // ── Set modal (add + edit) ────────────────────────────────────────────────
+
+  function showSetModal(exId, existingSet = null) {
+    const found = program.weeks?.flatMap(w => w.days || [])
+      .flatMap(d => d.exercises || [])
+      .find(e => String(e.id) === String(exId));
+    const ex     = found;
+    const hasTop = ex?.sets?.some(s => s.set_type === 'top');
+    const isEdit = !!existingSet;
+
+    const bd = createModal(isEdit ? 'Edit Set' : 'Add Set', `
+      ${!isEdit ? `
+        <div class="form-group">
+          <label class="form-label">Shorthand (fastest)</label>
+          <input type="text" class="form-control" id="set-shorthand" placeholder="e.g. 3x4@8 or Top x2@8 + 3x4@7.5" autofocus>
+          <div class="form-hint">Leave blank to use fields below</div>
+        </div>
+        <div class="divider"></div>
+      ` : ''}
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Set Type</label>
+          <select class="form-select" id="set-type">
+            ${(!hasTop || existingSet?.set_type === 'top') ? '<option value="top"' + (existingSet?.set_type === 'top' ? ' selected' : '') + '>Top Set</option>' : ''}
+            <option value="backdown" ${existingSet?.set_type === 'backdown' || (hasTop && !existingSet) ? 'selected' : ''}>Backdown</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Reps</label>
+          <input type="number" class="form-control" id="set-reps" min="1" max="20" value="${existingSet?.reps ?? 4}" inputmode="numeric" ${isEdit ? 'autofocus' : ''}>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Target RPE</label>
+        <div class="rpe-picker rpe-picker-modal">
+          ${[5,5.5,6,6.5,7,7.5,8,8.5,9,9.5,10].map(r => `
+            <button type="button" class="rpe-btn ${r <= 7 ? 'rpe-btn-low' : r <= 8.5 ? 'rpe-btn-med' : 'rpe-btn-high'} ${existingSet?.target_rpe === r ? 'selected' : ''}" data-rpe="${r}">${r}</button>
+          `).join('')}
+          <input type="hidden" id="set-rpe-hidden" value="${existingSet?.target_rpe ?? ''}">
+        </div>
+        <div class="form-hint">Tap to select target RPE (optional)</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes (optional)</label>
+        <input type="text" class="form-control" id="set-notes" placeholder="Pause on chest…" value="${existingSet?.notes ?? ''}">
+      </div>
+    `, async () => {
+      const target = program.weeks?.flatMap(w => w.days || [])
+        .flatMap(d => d.exercises || [])
+        .find(e => String(e.id) === String(exId));
+      if (!isEdit) {
+        const shorthand  = bd.querySelector('#set-shorthand').value.trim();
+        const parsedSets = parseShorthand(shorthand);
+        if (parsedSets?.length) {
+          const baseOrder = (ex?.sets?.length || 0);
+          const newSets = await Promise.all(
+            parsedSets.map((s, i) => programAPI.addSet(exId, { ...s, set_order: baseOrder + i }))
+          );
+          if (target) { if (!target.sets) target.sets = []; target.sets.push(...newSets); }
+          toast(`${parsedSets.length} sets added`, 'success');
+        } else {
+          const setOrder = (ex?.sets?.length || 0);
+          const newSet = await programAPI.addSet(exId, {
+            set_type:   bd.querySelector('#set-type').value,
+            reps:       parseInt(bd.querySelector('#set-reps').value) || 4,
+            target_rpe: bd.querySelector('#set-rpe-hidden').value || null,
+            set_order:  setOrder,
+            notes:      bd.querySelector('#set-notes').value
+          });
+          if (target) { if (!target.sets) target.sets = []; target.sets.push(newSet); }
+        }
+      } else {
+        const updatedSet = await programAPI.updateSet(existingSet.id, {
+          set_type:   bd.querySelector('#set-type').value,
+          reps:       parseInt(bd.querySelector('#set-reps').value) || 4,
+          target_rpe: bd.querySelector('#set-rpe-hidden').value || null,
+          notes:      bd.querySelector('#set-notes').value
+        });
+        for (const w of program.weeks || []) {
+          for (const d of w.days || []) {
+            for (const ex2 of d.exercises || []) {
+              const idx = ex2.sets?.findIndex(s => String(s.id) === String(existingSet.id));
+              if (idx !== undefined && idx >= 0) ex2.sets[idx] = updatedSet;
+            }
+          }
+        }
+        toast('Set updated', 'success');
+      }
+      bd.remove();
+      render();
+    }, isEdit ? 'Save Changes' : 'Save');
+
+    // RPE picker
+    bd.querySelectorAll('.rpe-picker-modal .rpe-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        bd.querySelectorAll('.rpe-picker-modal .rpe-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        bd.querySelector('#set-rpe-hidden').value = btn.dataset.rpe;
+      });
+    });
+  }
+
+  // ── Other modals ─────────────────────────────────────────────────────────
 
   function showAddExerciseModal(dayId) {
     const bd = createModal('Add Exercise', `
@@ -336,102 +647,33 @@ export async function renderProgramBuilder(app, programId) {
         notes: bd.querySelector('#ex-notes').value
       });
 
-      // Parse and add shorthand sets
-      const shorthand = bd.querySelector('#ex-shorthand').value.trim();
+      const shorthand  = bd.querySelector('#ex-shorthand').value.trim();
       const parsedSets = parseShorthand(shorthand);
       if (parsedSets?.length) {
-        for (let i = 0; i < parsedSets.length; i++) {
-          await programAPI.addSet(ex.id, { ...parsedSets[i], set_order: i });
-        }
+        const newSets = await Promise.all(
+          parsedSets.map((s, i) => programAPI.addSet(ex.id, { ...s, set_order: i }))
+        );
+        ex.sets = newSets;
       }
 
-      program = await programAPI.getFull(programId);
+      for (const w of program.weeks || []) {
+        for (const d of w.days || []) {
+          if (String(d.id) === String(dayId)) {
+            if (!d.exercises) d.exercises = [];
+            d.exercises.push(ex);
+            break;
+          }
+        }
+      }
       bd.remove();
       render();
       toast(`${name} added${parsedSets?.length ? ` with ${parsedSets.length} sets` : ''}`, 'success');
     });
 
-    // Template buttons
     bd.querySelectorAll('.ex-template-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         bd.querySelector('#ex-name').value = btn.dataset.name;
         bd.querySelector('#ex-name').focus();
-      });
-    });
-  }
-
-  function showAddSetModal(exId) {
-    const week = program.weeks?.find(w => w.days?.find(d => d.exercises?.find(e => String(e.id) === exId)));
-    const day  = week?.days?.find(d => d.exercises?.find(e => String(e.id) === exId));
-    const ex   = day?.exercises?.find(e => String(e.id) === exId);
-    const hasTop = ex?.sets?.some(s => s.set_type === 'top');
-
-    const bd = createModal('Add Set', `
-      <div class="form-group">
-        <label class="form-label">Shorthand (fastest)</label>
-        <input type="text" class="form-control" id="set-shorthand" placeholder="e.g. 3x4@8 or Top x2@8 + 3x4@7.5" autofocus>
-        <div class="form-hint">Leave blank to use fields below</div>
-      </div>
-      <div class="divider"></div>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Set Type</label>
-          <select class="form-select" id="set-type">
-            ${!hasTop ? '<option value="top">Top Set</option>' : ''}
-            <option value="backdown" ${hasTop ? 'selected' : ''}>Backdown</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Reps</label>
-          <input type="number" class="form-control" id="set-reps" min="1" max="20" value="4" inputmode="numeric">
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Target RPE</label>
-        <div class="rpe-picker rpe-picker-modal">
-          ${[5,5.5,6,6.5,7,7.5,8,8.5,9,9.5,10].map(r => `
-            <button type="button" class="rpe-btn ${r <= 7 ? 'rpe-btn-low' : r <= 8.5 ? 'rpe-btn-med' : 'rpe-btn-high'}" data-rpe="${r}">${r}</button>
-          `).join('')}
-          <input type="hidden" id="set-rpe-hidden" value="">
-        </div>
-        <div class="form-hint">Tap to select target RPE (optional)</div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Notes (optional)</label>
-        <input type="text" class="form-control" id="set-notes" placeholder="Pause on chest…">
-      </div>
-    `, async () => {
-      const shorthand = bd.querySelector('#set-shorthand').value.trim();
-      const parsedSets = parseShorthand(shorthand);
-
-      if (parsedSets?.length) {
-        const baseOrder = (ex?.sets?.length || 0);
-        for (let i = 0; i < parsedSets.length; i++) {
-          await programAPI.addSet(exId, { ...parsedSets[i], set_order: baseOrder + i });
-        }
-        toast(`${parsedSets.length} sets added`, 'success');
-      } else {
-        const setOrder = (ex?.sets?.length || 0);
-        await programAPI.addSet(exId, {
-          set_type:   bd.querySelector('#set-type').value,
-          reps:       parseInt(bd.querySelector('#set-reps').value) || 4,
-          target_rpe: bd.querySelector('#set-rpe-hidden').value || null,
-          set_order:  setOrder,
-          notes:      bd.querySelector('#set-notes').value
-        });
-      }
-
-      program = await programAPI.getFull(programId);
-      bd.remove();
-      render();
-    });
-
-    // RPE picker in modal
-    bd.querySelectorAll('.rpe-picker-modal .rpe-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        bd.querySelectorAll('.rpe-picker-modal .rpe-btn').forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected');
-        bd.querySelector('#set-rpe-hidden').value = btn.dataset.rpe;
       });
     });
   }
@@ -447,13 +689,15 @@ export async function renderProgramBuilder(app, programId) {
       <p style="font-size:0.82rem;color:var(--text-muted);margin-top:8px">This will set the program as the athlete's active program.</p>
     `, async () => {
       const athleteId = bd.querySelector('#assign-athlete').value;
-      await programAPI.assign(programId, athleteId);
+      const updated = await programAPI.assign(programId, athleteId);
+      program.athlete_id = updated.athlete_id;
       bd.remove();
       toast('Program assigned!', 'success');
-      program = await programAPI.getFull(programId);
       render();
     });
   }
+
+  // ── Modal factory ─────────────────────────────────────────────────────────
 
   function createModal(title, bodyHtml, onSave, saveLabel = 'Save') {
     const backdrop = document.createElement('div');
@@ -471,11 +715,28 @@ export async function renderProgramBuilder(app, programId) {
         </div>
       </div>`;
     document.body.appendChild(backdrop);
-    backdrop.querySelector('.modal-close').addEventListener('click', () => backdrop.remove());
-    backdrop.querySelector('.cancel-modal-btn').addEventListener('click', () => backdrop.remove());
-    backdrop.querySelector('.save-modal-btn').addEventListener('click', async () => {
+
+    const close = () => {
+      backdrop.remove();
+      document.removeEventListener('keydown', handleKey);
+    };
+
+    const save = async () => {
       try { await onSave(); } catch (err) { toast(err.message, 'error'); }
-    });
+    };
+
+    function handleKey(e) {
+      if (e.key === 'Escape') { close(); }
+      if (e.key === 'Enter' && !e.target.matches('textarea, input[type=text]')) {
+        e.preventDefault();
+        backdrop.querySelector('.save-modal-btn').click();
+      }
+    }
+    document.addEventListener('keydown', handleKey);
+
+    backdrop.querySelector('.modal-close').addEventListener('click', close);
+    backdrop.querySelector('.cancel-modal-btn').addEventListener('click', close);
+    backdrop.querySelector('.save-modal-btn').addEventListener('click', save);
     setTimeout(() => backdrop.querySelector('input')?.focus(), 50);
     return backdrop;
   }
