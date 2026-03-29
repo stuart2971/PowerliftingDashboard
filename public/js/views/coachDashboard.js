@@ -12,7 +12,7 @@ export async function renderCoachDashboard(app) {
       <div class="page-header">
         <div class="page-header-left">
           <h1 class="page-title">Coach Dashboard</h1>
-          <div class="page-subtitle">G5 Powerlifting</div>
+          <div class="page-subtitle">StrengthTrack</div>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-secondary" id="new-program-btn">+ New Program</button>

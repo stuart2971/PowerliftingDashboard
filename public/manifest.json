@@ -1,7 +1,7 @@
 {
-  "name": "G5 Powerlifting",
-  "short_name": "G5 PL",
-  "description": "G5 Powerlifting Coach Dashboard",
+  "name": "StrengthTrack",
+  "short_name": "StrengthTrack",
+  "description": "StrengthTrack Coach Dashboard",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

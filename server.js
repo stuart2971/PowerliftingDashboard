@@ -1,12 +1,5 @@
 require('dotenv').config();
 
-if (!process.env.DATABASE_URL) {
-  console.error('ERROR: DATABASE_URL environment variable is not set.');
-  console.error('Set it in your .env file or Railway dashboard.');
-  console.error('Example: DATABASE_URL=postgresql://user:pass@host:5432/dbname');
-  process.exit(1);
-}
-
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
@@ -31,16 +24,19 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-const PORT = process.env.PORT || 3000;
+// Initialise schema then start (or just export for Vercel serverless)
+const schemaReady = initSchema().catch(err => {
+  console.error('Failed to initialise database:', err.message);
+  if (process.env.VERCEL !== '1') process.exit(1);
+});
 
-(async () => {
-  try {
-    await initSchema();
+if (process.env.VERCEL !== '1') {
+  const PORT = process.env.PORT || 3000;
+  schemaReady.then(() => {
     app.listen(PORT, () => {
-      console.log(`G5 Powerlifting Dashboard running at http://localhost:${PORT}`);
+      console.log(`StrengthTrack running at http://localhost:${PORT}`);
     });
-  } catch (err) {
-    console.error('Failed to initialise database:', err.message);
-    process.exit(1);
-  }
-})();
+  });
+}
+
+module.exports = app;

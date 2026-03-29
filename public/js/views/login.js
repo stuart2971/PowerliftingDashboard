@@ -6,8 +6,7 @@ export function renderLogin(app, showRegister = false) {
     <div class="login-page" style="padding-top:0">
       <div class="login-card">
         <div class="login-header">
-          <div class="login-logo">G5</div>
-          <div class="login-logo-sub">Powerlifting</div>
+          <div class="login-logo">StrengthTrack</div>
         </div>
         <div class="login-body">
           <div class="login-tabs">
