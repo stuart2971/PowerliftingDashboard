@@ -99,38 +99,59 @@ router.post('/:id/assign/:athleteId', requireCoach, async (req, res) => {
 // GET /api/programs/:id/full
 router.get('/:id/full', async (req, res) => {
   try {
-    const progRes = await query('SELECT * FROM programs WHERE id = $1', [req.params.id]);
-    const program = progRes.rows[0];
-    if (!program) return res.status(404).json({ error: 'Program not found' });
+    const result = await query(`
+      SELECT
+        p.id, p.name, p.description, p.coach_id,
+        p.athlete_id, p.is_active, p.created_at,
+        w.id AS week_id, w.week_number, w.label AS week_label,
+        d.id AS day_id, d.day_number, d.label AS day_label,
+        e.id AS ex_id, e.exercise_order, e.name AS ex_name, e.notes AS ex_notes,
+        s.id AS set_id, s.set_order, s.set_type, s.reps, s.target_rpe, s.notes AS set_notes
+      FROM programs p
+      LEFT JOIN program_weeks     w ON w.program_id  = p.id
+      LEFT JOIN program_days      d ON d.week_id     = w.id
+      LEFT JOIN program_exercises e ON e.day_id      = d.id
+      LEFT JOIN program_sets      s ON s.exercise_id = e.id
+      WHERE p.id = $1
+      ORDER BY w.week_number, d.day_number, e.exercise_order, s.set_order
+    `, [req.params.id]);
 
-    const weeksRes = await query(
-      'SELECT * FROM program_weeks WHERE program_id = $1 ORDER BY week_number',
-      [program.id]
-    );
-    const weeks = weeksRes.rows;
+    if (!result.rows.length) return res.status(404).json({ error: 'Program not found' });
 
-    for (const week of weeks) {
-      const daysRes = await query(
-        'SELECT * FROM program_days WHERE week_id = $1 ORDER BY day_number',
-        [week.id]
-      );
-      week.days = daysRes.rows;
-      for (const day of week.days) {
-        const exRes = await query(
-          'SELECT * FROM program_exercises WHERE day_id = $1 ORDER BY exercise_order',
-          [day.id]
-        );
-        day.exercises = exRes.rows;
-        for (const ex of day.exercises) {
-          const setRes = await query(
-            'SELECT * FROM program_sets WHERE exercise_id = $1 ORDER BY set_order',
-            [ex.id]
-          );
-          ex.sets = setRes.rows;
-        }
+    const r0 = result.rows[0];
+    const program = {
+      id: r0.id, name: r0.name, description: r0.description,
+      coach_id: r0.coach_id, athlete_id: r0.athlete_id,
+      is_active: r0.is_active, created_at: r0.created_at, weeks: []
+    };
+
+    const weekMap = new Map(), dayMap = new Map(), exMap = new Map();
+
+    for (const row of result.rows) {
+      if (row.week_id == null) continue;
+      if (!weekMap.has(row.week_id)) {
+        const week = { id: row.week_id, week_number: row.week_number, label: row.week_label, days: [] };
+        weekMap.set(row.week_id, week);
+        program.weeks.push(week);
       }
+      if (row.day_id == null) continue;
+      if (!dayMap.has(row.day_id)) {
+        const day = { id: row.day_id, day_number: row.day_number, label: row.day_label, exercises: [] };
+        dayMap.set(row.day_id, day);
+        weekMap.get(row.week_id).days.push(day);
+      }
+      if (row.ex_id == null) continue;
+      if (!exMap.has(row.ex_id)) {
+        const ex = { id: row.ex_id, exercise_order: row.exercise_order, name: row.ex_name, notes: row.ex_notes, sets: [] };
+        exMap.set(row.ex_id, ex);
+        dayMap.get(row.day_id).exercises.push(ex);
+      }
+      if (row.set_id == null) continue;
+      exMap.get(row.ex_id).sets.push({
+        id: row.set_id, set_order: row.set_order, set_type: row.set_type,
+        reps: row.reps, target_rpe: row.target_rpe, notes: row.set_notes
+      });
     }
-    program.weeks = weeks;
     res.json(program);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -140,8 +161,7 @@ router.get('/:id/full', async (req, res) => {
 // POST /api/programs/:id/copy-week/:weekId
 router.post('/:id/copy-week/:weekId', requireCoach, async (req, res) => {
   try {
-    const { rpe_increment = 0.5 } = req.body;
-    const inc = parseFloat(rpe_increment) || 0;
+    const { exercise_increments = {} } = req.body;
 
     const maxRes = await query(
       'SELECT MAX(week_number) as m FROM program_weeks WHERE program_id = $1',
@@ -183,7 +203,8 @@ router.post('/:id/copy-week/:weekId', requireCoach, async (req, res) => {
           [newDayId, ex.exercise_order, ex.name, ex.notes || null]
         );
         const newExId = newExRes.rows[0].id;
-        const applyInc = inc > 0 && isMainLift(ex.name);
+        const inc = Number(exercise_increments[ex.name] ?? 0);
+        const applyInc = inc > 0;
 
         const srcSetsRes = await query(
           'SELECT * FROM program_sets WHERE exercise_id = $1 ORDER BY set_order',
@@ -202,17 +223,41 @@ router.post('/:id/copy-week/:weekId', requireCoach, async (req, res) => {
     }
 
     // Return full new week structure
-    const weekRes = await query('SELECT * FROM program_weeks WHERE id = $1', [newWeekId]);
-    const week = weekRes.rows[0];
-    const daysRes = await query('SELECT * FROM program_days WHERE week_id = $1 ORDER BY day_number', [newWeekId]);
-    week.days = daysRes.rows;
-    for (const day of week.days) {
-      const exRes = await query('SELECT * FROM program_exercises WHERE day_id = $1 ORDER BY exercise_order', [day.id]);
-      day.exercises = exRes.rows;
-      for (const ex of day.exercises) {
-        const setRes = await query('SELECT * FROM program_sets WHERE exercise_id = $1 ORDER BY set_order', [ex.id]);
-        ex.sets = setRes.rows;
+    const weekResult = await query(`
+      SELECT
+        w.id AS week_id, w.week_number, w.label AS week_label,
+        d.id AS day_id, d.day_number, d.label AS day_label,
+        e.id AS ex_id, e.exercise_order, e.name AS ex_name, e.notes AS ex_notes,
+        s.id AS set_id, s.set_order, s.set_type, s.reps, s.target_rpe, s.notes AS set_notes
+      FROM program_weeks w
+      LEFT JOIN program_days      d ON d.week_id     = w.id
+      LEFT JOIN program_exercises e ON e.day_id      = d.id
+      LEFT JOIN program_sets      s ON s.exercise_id = e.id
+      WHERE w.id = $1
+      ORDER BY d.day_number, e.exercise_order, s.set_order
+    `, [newWeekId]);
+
+    const wr0 = weekResult.rows[0];
+    const week = { id: wr0.week_id, week_number: wr0.week_number, label: wr0.week_label, days: [] };
+    const dayMap2 = new Map(), exMap2 = new Map();
+    for (const row of weekResult.rows) {
+      if (row.day_id == null) continue;
+      if (!dayMap2.has(row.day_id)) {
+        const day = { id: row.day_id, day_number: row.day_number, label: row.day_label, exercises: [] };
+        dayMap2.set(row.day_id, day);
+        week.days.push(day);
       }
+      if (row.ex_id == null) continue;
+      if (!exMap2.has(row.ex_id)) {
+        const ex = { id: row.ex_id, exercise_order: row.exercise_order, name: row.ex_name, notes: row.ex_notes, sets: [] };
+        exMap2.set(row.ex_id, ex);
+        dayMap2.get(row.day_id).exercises.push(ex);
+      }
+      if (row.set_id == null) continue;
+      exMap2.get(row.ex_id).sets.push({
+        id: row.set_id, set_order: row.set_order, set_type: row.set_type,
+        reps: row.reps, target_rpe: row.target_rpe, notes: row.set_notes
+      });
     }
     res.status(201).json(week);
   } catch (err) {
