@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 220" fill="none">
+  <!-- Left barbell end cap -->
+  <rect x="2" y="93" width="20" height="34" rx="4" fill="#2d2d2d"/>
+  <!-- Left weight plate -->
+  <rect x="18" y="80" width="22" height="60" rx="5" fill="#2d2d2d"/>
+  <!-- Left bar -->
+  <rect x="40" y="101" width="42" height="18" rx="3" fill="#2d2d2d"/>
+
+  <!-- Right bar -->
+  <rect x="198" y="101" width="42" height="18" rx="3" fill="#2d2d2d"/>
+  <!-- Right weight plate -->
+  <rect x="240" y="80" width="22" height="60" rx="5" fill="#2d2d2d"/>
+  <!-- Right end cap -->
+  <rect x="258" y="93" width="20" height="34" rx="4" fill="#2d2d2d"/>
+
+  <!-- Shield/hexagon outline — fills white over bar to give "through" effect -->
+  <!-- Outer shield (filled white first, then stroke on top) -->
+  <polygon points="140,8 200,42 200,178 140,212 80,178 80,42"
+           fill="white" stroke="#2d2d2d" stroke-width="16" stroke-linejoin="round"/>
+
+  <!-- Trend line inside shield -->
+  <polyline points="92,158 108,132 118,144 132,112 144,124 162,86 175,98"
+            fill="none" stroke="#2d2d2d" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Arrow head on trend line -->
+  <polyline points="162,78 175,98 155,96"
+            fill="none" stroke="#2d2d2d" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
