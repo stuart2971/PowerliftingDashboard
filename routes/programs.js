@@ -211,7 +211,7 @@ router.post('/:id/copy-week/:weekId', requireCoach, async (req, res) => {
           [ex.id]
         );
         for (const s of srcSetsRes.rows) {
-          const newRpe = s.target_rpe != null && applyInc
+          const newRpe = s.target_rpe != null && applyInc && s.set_type === 'top'
             ? Math.min(10, Math.round((s.target_rpe + inc) * 2) / 2)
             : s.target_rpe;
           await query(

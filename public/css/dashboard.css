@@ -102,6 +102,13 @@
   border-bottom: 2px solid var(--accent);
 }
 
+.login-logo-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
 .login-logo {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 3rem;
@@ -610,15 +617,15 @@
 @media (max-width: 380px) {
   .sets-table-head { display: none; }
   .set-row {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr auto;
     grid-template-rows: auto auto;
-    gap: 6px;
+    padding: 10px 8px;
+    gap: 6px 8px;
   }
-  .set-col-name   { grid-column: 1 / -1; }
-  .set-col-load   { grid-column: 1; }
-  .set-col-rpe    { grid-column: 2; }
-  .set-col-reps   { grid-column: 1; }
-  .set-col-action { grid-column: 2; justify-self: end; }
+  .set-col-type   { grid-column: 1; grid-row: 1; }
+  .set-col-action { grid-column: 2; grid-row: 1; align-self: center; }
+  .set-col-load   { grid-column: 1; grid-row: 2; }
+  .set-col-rpe    { grid-column: 2; grid-row: 2; }
 }
 
 /* ── Athlete Profile ──────────────────────────────────────────── */
@@ -805,11 +812,54 @@
   display: flex;
   gap: 12px;
   align-items: center;
-  padding: 4px 0;
+  padding: 6px 4px;
   font-size: 0.82rem;
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: background 0.1s;
 }
-
+.program-set-row:hover { background: rgba(0,0,0,0.04); }
 .program-set-row .tag { flex-shrink: 0; }
+
+/* Drag and drop */
+.drag-handle {
+  color: var(--text-muted);
+  cursor: grab;
+  user-select: none;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.drag-handle:active { cursor: grabbing; }
+.dragging { opacity: 0.4; }
+.drag-over { outline: 2px dashed var(--accent); border-radius: var(--radius); }
+
+/* Program exercise hover */
+.program-exercise[draggable]:hover > div:first-child { background: rgba(0,0,0,0.02); }
+
+/* Collapse */
+.collapse-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+.program-week.collapsed .pw-days-content,
+.program-day.collapsed .pd-exercises-content,
+.program-exercise.collapsed .pex-sets-content { display: none; }
+
+/* Copy week per-exercise RPE */
+.copy-week-exercises { display: flex; flex-direction: column; gap: 8px; }
+.copy-week-ex-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.copy-week-ex-name { font-size: 0.85rem; color: var(--text-secondary); flex: 1; min-width: 120px; }
 
 /* ── Weeks Out Progress ───────────────────────────────────────── */
 .weeks-bar {
@@ -1067,3 +1117,21 @@
   color: var(--text-muted);
   white-space: nowrap;
 }
+
+/* ── Skeleton loading ─────────────────────────────────────────── */
+.skel {
+  display: block;
+  border-radius: var(--radius);
+  background: linear-gradient(90deg, var(--bg) 25%, var(--border) 50%, var(--bg) 75%);
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes skel-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skel-page .page-header { align-items: center; gap: 12px; }
+.skel-h    { height: 28px; width: clamp(140px, 40%, 240px); }
+.skel-btn  { height: 34px; width: 90px; flex-shrink: 0; }
+.skel-card { height: 90px; margin-bottom: 14px; }
+.skel-tall { height: 200px; }
