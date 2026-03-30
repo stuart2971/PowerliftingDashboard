@@ -1,6 +1,5 @@
 import { getUser, navigate, toast } from '../app.js';
 import { programAPI, sessionAPI, athleteAPI } from '../api.js';
-import { calcE1RM, calcBackdownLoad } from '../rpe.js';
 
 export async function renderAthleteDashboard(app) {
   const user = getUser();
@@ -84,25 +83,6 @@ export async function renderAthleteDashboard(app) {
     }
   }
 
-  // Fetch predictions for upcoming day exercises
-  let predictions = [];
-  if (upcomingDay?.exercises?.length) {
-    const historyResults = await Promise.allSettled(
-      upcomingDay.exercises.map(ex => sessionAPI.exerciseHistory(ex.name))
-    );
-    predictions = upcomingDay.exercises.map((ex, i) => {
-      const history = historyResults[i].status === 'fulfilled' ? historyResults[i].value : [];
-      const topSet = ex.sets?.find(s => s.set_type === 'top');
-      if (!topSet || !history.length) return null;
-      const recentTop = history.find(h => h.set_type === 'top');
-      if (!recentTop) return null;
-      const e1rm = calcE1RM(recentTop.load_kg, recentTop.reps, recentTop.actual_rpe);
-      if (!e1rm) return null;
-      const predicted = calcBackdownLoad(e1rm, topSet.reps, topSet.target_rpe);
-      return { name: ex.name, predicted, reps: topSet.reps, rpe: topSet.target_rpe, basedOn: recentTop };
-    }).filter(Boolean);
-  }
-
   const dayLabel = upcomingDay
     ? `Day ${upcomingDay.day_number}${upcomingDay.label ? ' — ' + upcomingDay.label : ''}`
     : null;
@@ -155,19 +135,16 @@ export async function renderAthleteDashboard(app) {
             const desc = top
               ? `${top.reps}@RPE${top.target_rpe ?? '?'}${bds.length ? ` + ${bds.length}×${bds[0].reps}@RPE${bds[0].target_rpe ?? '?'}` : ''}`
               : `${ex.sets?.length ?? 0} sets`;
-            const pred = predictions.find(p => p.name === ex.name);
             return `
               <div class="today-exercise-row">
                 <div class="today-exercise-main">
                   <span class="today-exercise-name">${ex.name}</span>
                   <span class="today-exercise-desc">${desc}</span>
                 </div>
-                ${pred ? `<div class="today-prediction"><span class="pred-label-full">est. top set </span><span class="pred-label-short">est. </span>~${pred.predicted}kg</div>` : ''}
               </div>`;
           }).join('') || '<div style="padding:8px 0;color:var(--text-muted)">No exercises</div>'}
         </div>
 
-        ${predictions.length ? `<div class="today-prediction-note">Predictions based on previous performance</div>` : ''}
       </div>` : ''}
 
       <div class="section" style="margin-top:24px">

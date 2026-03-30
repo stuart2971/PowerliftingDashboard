@@ -157,7 +157,7 @@ export async function renderSessionLog(app, sessionId) {
       const load = parseFloat(hintEl.dataset.load);
       const rpe  = parseFloat(hintEl.dataset.rpe);
       const topRow = exEl.querySelector('.set-row.top-set');
-      if (!topRow) return;
+      if (!topRow || topRow.classList.contains('logged')) return;
       const loadInput = topRow.querySelector('.load-input');
       if (loadInput) {
         loadInput.value = load;
@@ -243,6 +243,8 @@ export async function renderSessionLog(app, sessionId) {
   }
 
   async function unlogSet(ex, setId, exEl) {
+    // Capture RPE the user had typed before re-render resets it to prescription
+    const prevRpe = exEl.querySelector(`[data-set-id="${setId}"] .rpe-input`)?.value;
     try {
       const updatedEx = await sessionAPI.unlogSet(setId);
       const exIdx = session.exercises.findIndex(e => e.id === ex.id);
@@ -250,6 +252,12 @@ export async function renderSessionLog(app, sessionId) {
       const newDiv = document.createElement('div');
       newDiv.innerHTML = renderExerciseBlock(updatedEx);
       exEl.replaceWith(newDiv.firstElementChild);
+      // Restore the RPE value the user had entered
+      if (prevRpe) {
+        const newExEl = document.getElementById(`ex-${updatedEx.id}`);
+        const rpeInput = newExEl?.querySelector(`[data-set-id="${setId}"] .rpe-input`);
+        if (rpeInput) rpeInput.value = prevRpe;
+      }
       attachExerciseListeners(updatedEx);
       document.getElementById('session-progress-mount').innerHTML = renderProgressBar();
       toast('Set unlogged — edit and re-log', 'info');
@@ -268,8 +276,41 @@ export async function renderSessionLog(app, sessionId) {
       return;
     }
 
-    const btn = row.querySelector('.set-save-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    // ── Optimistic UI: lock the row immediately ──────────────────
+    row.classList.add('logged');
+    row.querySelectorAll('input').forEach(inp => { inp.disabled = true; });
+    row.querySelectorAll('.rpe-adj-btn, .load-adj-btn').forEach(b => { b.disabled = true; });
+    const actionCol = row.querySelector('.set-col-action');
+    if (actionCol) actionCol.innerHTML =
+      `<button class="set-unlog-btn" data-set-id="${setId}" disabled>✓</button>`;
+
+    // Calculate backdown loads client-side right away (top set only)
+    if (dbSet.set_type === 'top' && actual_rpe) {
+      const e1rm = calcE1RM(load_kg, reps, actual_rpe);
+      if (e1rm) {
+        exEl.querySelectorAll('.set-row.backdown:not(.logged)').forEach(bdRow => {
+          const bdSet = ex.sets.find(s => String(s.id) === bdRow.dataset.setId);
+          if (!bdSet?.target_rpe || bdSet.actual_rpe != null) return;
+          const calcLoad = calcBackdownLoad(e1rm, bdSet.reps, bdSet.target_rpe);
+          const loadEl = bdRow.querySelector('.load-input');
+          if (loadEl) { loadEl.value = calcLoad; loadEl.className = 'set-input load-input calculated'; }
+        });
+      }
+    }
+
+    // Update last-load cache optimistically
+    if (dbSet.set_type === 'top' && load_kg) {
+      lastLoads[ex.id] = { load_kg, actual_rpe, session_date: session.session_date };
+    }
+
+    // Update progress bar optimistically
+    const prevRpe = dbSet.actual_rpe;
+    if (prevRpe == null) dbSet.actual_rpe = actual_rpe ?? 0;
+    document.getElementById('session-progress-mount').innerHTML = renderProgressBar();
+    if (prevRpe == null) dbSet.actual_rpe = null;
+
+    // Advance to next set immediately — don't wait for server
+    autoAdvance(ex.id, setId);
 
     try {
       const updatedEx = await sessionAPI.logSet(ex.id, {
@@ -283,49 +324,36 @@ export async function renderSessionLog(app, sessionId) {
         target_rpe:     dbSet.target_rpe
       });
 
-      // Update local session state
       const exIdx = session.exercises.findIndex(e => e.id === ex.id);
-      if (exIdx >= 0) {
-        session.exercises[exIdx] = updatedEx;
-      }
+      if (exIdx >= 0) session.exercises[exIdx] = updatedEx;
 
-      // Update last-load cache for this exercise
-      if (dbSet.set_type === 'top' && load_kg) {
-        lastLoads[ex.id] = { load_kg, actual_rpe, session_date: session.session_date };
-      }
-
-      // Re-render exercise block
+      // Re-render with server-confirmed data (backdown loads etc.)
       const newDiv = document.createElement('div');
       newDiv.innerHTML = renderExerciseBlock(updatedEx);
-      const newExEl = newDiv.firstElementChild;
-      exEl.replaceWith(newExEl);
-
-      // Re-attach listeners
+      exEl.replaceWith(newDiv.firstElementChild);
       attachExerciseListeners(updatedEx);
-
-      // Update progress bar
       document.getElementById('session-progress-mount').innerHTML = renderProgressBar();
-
-      toast('Set logged!', 'success');
-
-      // Auto-advance to next unsaved set
-      autoAdvance(updatedEx.id, setId);
 
     } catch (err) {
       toast(err.message, 'error');
-      if (btn) { btn.disabled = false; btn.textContent = 'Log'; }
+      // Rollback: re-render from original session state
+      const newDiv = document.createElement('div');
+      newDiv.innerHTML = renderExerciseBlock(ex);
+      exEl.replaceWith(newDiv.firstElementChild);
+      attachExerciseListeners(ex);
+      document.getElementById('session-progress-mount').innerHTML = renderProgressBar();
     }
   }
 
   function autoAdvance(savedExId, savedSetId) {
-    // Find next set that has no actual_rpe logged
+    // Find next set that has no actual_rpe logged and isn't optimistically locked
     for (const ex of session.exercises) {
       const exEl = document.getElementById(`ex-${ex.id}`);
       if (!exEl) continue;
       for (const s of (ex.sets || [])) {
-        if (s.actual_rpe != null) continue;  // already logged
+        if (s.actual_rpe != null) continue;  // confirmed-logged by server
         const row = exEl.querySelector(`[data-set-id="${s.id}"]`);
-        if (!row) continue;
+        if (!row || row.classList.contains('logged')) continue;  // optimistically locked
         // Found next unlogged set — scroll to it and focus load input
         setTimeout(() => {
           row.scrollIntoView({ behavior: 'smooth', block: 'center' });

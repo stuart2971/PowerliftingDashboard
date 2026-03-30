@@ -6,6 +6,7 @@ export function renderLogin(app, showRegister = false) {
     <div class="login-page" style="padding-top:0">
       <div class="login-card">
         <div class="login-header">
+          <img src="/icons/icon-192.svg" alt="StrengthTrack" class="login-logo-icon">
           <div class="login-logo">StrengthTrack</div>
         </div>
         <div class="login-body">
