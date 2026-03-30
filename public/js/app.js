@@ -51,6 +51,35 @@ function getRoute() {
   return { path: '/' + parts.join('/'), parts };
 }
 
+// ── Skeleton screens ──────────────────────────────────────────────
+const SKEL = {
+  page: `<div class="page skel-page">
+    <div class="page-header">
+      <div><div class="skel skel-h"></div></div>
+      <div class="skel skel-btn"></div>
+    </div>
+    <div class="skel skel-card"></div>
+    <div class="skel skel-card"></div>
+    <div class="skel skel-card"></div>
+  </div>`,
+  program: `<div class="page skel-page">
+    <div class="page-header">
+      <div><div class="skel skel-h"></div></div>
+      <div class="skel skel-btn"></div>
+    </div>
+    <div class="skel skel-card skel-tall"></div>
+    <div class="skel skel-card skel-tall"></div>
+  </div>`,
+  session: `<div class="page skel-page">
+    <div class="page-header">
+      <div><div class="skel skel-h"></div></div>
+    </div>
+    <div class="skel skel-card"></div>
+    <div class="skel skel-card skel-tall"></div>
+    <div class="skel skel-card skel-tall"></div>
+  </div>`,
+};
+
 async function router() {
   const user = getUser();
   const { path, parts } = getRoute();
@@ -68,52 +97,70 @@ async function router() {
     return;
   }
 
+  // Role-based route guards
+  if (user && user.role !== 'coach' && path.startsWith('/coach')) {
+    navigate('/dashboard');
+    return;
+  }
+  if (user && user.role === 'coach' && path === '/dashboard') {
+    navigate('/coach');
+    return;
+  }
+
   // Render navbar
   renderNavbar(user);
 
-  app.innerHTML = '<div class="loading-screen"><div class="spinner"></div></div>';
-
   try {
     if (path === '/login' || path === '/register') {
+      app.innerHTML = '';
       return renderLogin(app, path === '/register');
     }
 
     if (path === '/dashboard') {
+      app.innerHTML = SKEL.page;
       return renderAthleteDashboard(app);
     }
 
     if (path.startsWith('/my/exercise/') && parts[2]) {
+      app.innerHTML = SKEL.page;
       return renderAthleteExercise(app, null, parts[2]);
     }
 
     if (path.startsWith('/session/')) {
+      app.innerHTML = SKEL.session;
       const sessionId = parts[1];
       return renderSessionLog(app, sessionId);
     }
 
     if (path === '/profile') {
+      app.innerHTML = SKEL.page;
       return renderAthleteProfile(app);
     }
 
     if (path === '/coach') {
+      app.innerHTML = SKEL.page;
       return renderCoachDashboard(app);
     }
 
     if (path.startsWith('/coach/athlete/') && parts[3] === 'exercise' && parts[4]) {
+      app.innerHTML = SKEL.page;
       return renderAthleteExercise(app, parts[2], parts[4]);
     }
 
     if (path.startsWith('/coach/athlete/')) {
+      app.innerHTML = SKEL.page;
       const athleteId = parts[2];
       return renderAthleteDetail(app, athleteId);
     }
 
     if (path.startsWith('/coach/program/')) {
+      app.innerHTML = SKEL.program;
       const programId = parts[2];
       return renderProgramBuilder(app, programId);
     }
 
     if (path.startsWith('/training/week/')) {
+      app.innerHTML = SKEL.page;
       const weekId = parts[2];
       return renderWeekDetail(app, weekId);
     }
@@ -147,3 +194,8 @@ window.addEventListener('load', router);
 
 // Initial render
 router();
+
+// Keep Vercel serverless function warm — ping every 4 min to prevent cold starts
+setInterval(() => {
+  if (getUser()) fetch('/api/auth/me').catch(() => {});
+}, 4 * 60 * 1000);

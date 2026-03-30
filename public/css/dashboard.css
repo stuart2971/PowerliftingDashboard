@@ -807,6 +807,14 @@
   color: var(--text-primary);
   margin-bottom: 8px;
 }
+.ex-top-label {
+  font-weight: 500;
+  font-style: normal;
+  color: var(--accent);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.82rem;
+}
 
 .program-set-row {
   display: flex;

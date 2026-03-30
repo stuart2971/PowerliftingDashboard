@@ -165,13 +165,17 @@ export async function renderProgramBuilder(app, programId) {
   function renderExercise(ex) {
     const key = 'e' + ex.id;
     const isCollapsed = collapsed.has(key);
+    const topSet = ex.sets?.find(s => s.set_type === 'top');
+    const exTitle = topSet
+      ? `${ex.name} <span class="ex-top-label">x${topSet.reps}${topSet.target_rpe != null ? ' @ ' + topSet.target_rpe : ''}</span>`
+      : ex.name;
     return `
       <div class="program-exercise${isCollapsed ? ' collapsed' : ''}" id="pex-${ex.id}" draggable="true" data-ex-id="${ex.id}">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <div style="display:flex;align-items:center;gap:6px">
             <span class="drag-handle" title="Drag to reorder">⠿</span>
             <button class="collapse-btn" data-key="${key}" title="${isCollapsed ? 'Expand' : 'Collapse'}">${isCollapsed ? '▶' : '▼'}</button>
-            <div class="program-exercise-name">${ex.name}</div>
+            <div class="program-exercise-name">${exTitle}</div>
           </div>
           <div style="display:flex;gap:6px">
             <button class="btn btn-secondary btn-sm add-set-btn" data-ex-id="${ex.id}">+ Set</button>
