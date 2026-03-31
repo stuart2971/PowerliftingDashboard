@@ -129,20 +129,13 @@ export async function renderAthleteDashboard(app) {
         </div>
 
         <div class="today-exercises">
-          ${upcomingDay.exercises?.map(ex => {
-            const top = ex.sets?.find(s => s.set_type === 'top');
-            const bds = ex.sets?.filter(s => s.set_type === 'backdown') || [];
-            const desc = top
-              ? `${top.reps}@RPE${top.target_rpe ?? '?'}${bds.length ? ` + ${bds.length}×${bds[0].reps}@RPE${bds[0].target_rpe ?? '?'}` : ''}`
-              : `${ex.sets?.length ?? 0} sets`;
-            return `
-              <div class="today-exercise-row">
-                <div class="today-exercise-main">
-                  <span class="today-exercise-name">${ex.name}</span>
-                  <span class="today-exercise-desc">${desc}</span>
-                </div>
-              </div>`;
-          }).join('') || '<div style="padding:8px 0;color:var(--text-muted)">No exercises</div>'}
+          ${upcomingDay.exercises?.map(ex => `
+            <div class="today-exercise-row">
+              <div class="today-exercise-main">
+                <span class="today-exercise-name">${ex.name}</span>
+              </div>
+            </div>`
+          ).join('') || '<div style="padding:8px 0;color:var(--text-muted)">No exercises</div>'}
         </div>
 
       </div>` : ''}
