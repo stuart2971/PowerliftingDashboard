@@ -58,7 +58,10 @@
       "Bash(curl -s -X PATCH \"https://api.vercel.com/v9/projects/prj_3Kpu7TA7PfzCB6wTgGPP38XOsxm6?teamId=team_0XJbL7jknUR47rH2GhSfTedv\" -H \"Authorization: Bearer vca_3fOWQZEnaieD1eEUltQ7hGoWZKGDKbbSViQ1zzOZ03UhPyh3OT3GE0GB\" -H \"Content-Type: application/json\" -d '{\"\"\"\"name\"\"\"\":\"\"\"\"strength-track\"\"\"\"}')",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\(''''name''''\\) or d.get\\(''''error'''',{}\\).get\\(''''message'''',''''unknown''''\\)\\)\")",
       "Bash(node -e \"let d='''''''';process.stdin.on\\(''''data'''',c=>d+=c\\);process.stdin.on\\(''''end'''',\\(\\)=>{const r=JSON.parse\\(d\\);console.log\\(r.name||JSON.stringify\\(r.error\\)\\)}\\)\")",
-      "Bash(curl -s -X PATCH \"https://api.vercel.com/v9/projects/prj_3Kpu7TA7PfzCB6wTgGPP38XOsxm6?teamId=team_0XJbL7jknUR47rH2GhSfTedv\" -H \"Authorization: Bearer vca_3fOWQZEnaieD1eEUltQ7hGoWZKGDKbbSViQ1zzOZ03UhPyh3OT3GE0GB\" -H \"Content-Type: application/json\" -d '{\"\"\"\"name\"\"\"\":\"\"\"\"strengthtrack-app\"\"\"\"}')"
+      "Bash(curl -s -X PATCH \"https://api.vercel.com/v9/projects/prj_3Kpu7TA7PfzCB6wTgGPP38XOsxm6?teamId=team_0XJbL7jknUR47rH2GhSfTedv\" -H \"Authorization: Bearer vca_3fOWQZEnaieD1eEUltQ7hGoWZKGDKbbSViQ1zzOZ03UhPyh3OT3GE0GB\" -H \"Content-Type: application/json\" -d '{\"\"\"\"name\"\"\"\":\"\"\"\"strengthtrack-app\"\"\"\"}')",
+      "Bash(VERCEL_TOKEN=\"vca_3fOWQZEnaieD1eEUltQ7hGoWZKGDKbbSViQ1zzOZ03UhPyh3OT3GE0GB\" npx vercel whoami)",
+      "Bash(curl -s -X POST \"https://api.vercel.com/registration/login/token\" -H \"Content-Type: application/json\" -d \"{\"\"token\"\":\"\"vcr_71I3xsZc0bgiCJhr5AusCeh12FlNNd3X5PgmYuiy3I0BLk2ncP3WMsXC\"\"}\")",
+      "Bash(node -e \"let d='''''''';process.stdin.on\\(''''data'''',c=>d+=c\\);process.stdin.on\\(''''end'''',\\(\\)=>console.log\\(d\\)\\)\")"
     ]
   }
 }

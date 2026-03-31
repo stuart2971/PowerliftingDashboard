@@ -24,6 +24,22 @@ async function getFullSession(sessionId) {
       [ex.id]
     );
     ex.sets = setRes.rows;
+
+    // Lazy-sync: if exercise has no logged sets but is linked to a program exercise,
+    // copy the current program sets in (handles sets added to program after session creation)
+    if (ex.sets.length === 0 && ex.program_exercise_id) {
+      const progSets = await query(
+        'SELECT * FROM program_sets WHERE exercise_id = $1 ORDER BY set_order',
+        [ex.program_exercise_id]
+      );
+      for (const s of progSets.rows) {
+        const inserted = await query(
+          'INSERT INTO logged_sets (logged_exercise_id, program_set_id, set_order, set_type, reps, target_rpe) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
+          [ex.id, s.id, s.set_order, s.set_type, s.reps, s.target_rpe]
+        );
+        ex.sets.push(inserted.rows[0]);
+      }
+    }
   }
   session.exercises = exercises;
   return session;
@@ -299,12 +315,8 @@ router.post('/exercises/:exId/sets', async (req, res) => {
             const calcLoad = calcBackdownLoad(e1rm, bd.reps, bd.target_rpe);
             const intensityPct = calcIntensityPct(calcLoad, e1rm);
             await query(
-              'UPDATE logged_sets SET calculated_load_kg=$1, load_kg=$2, intensity_pct=$3 WHERE id=$4 AND load_kg IS NULL',
+              'UPDATE logged_sets SET calculated_load_kg=$1, load_kg=CASE WHEN actual_rpe IS NULL THEN $2 ELSE load_kg END, intensity_pct=$3 WHERE id=$4',
               [calcLoad, calcLoad, intensityPct, bd.id]
-            );
-            await query(
-              'UPDATE logged_sets SET calculated_load_kg=$1, intensity_pct=$2 WHERE id=$3',
-              [calcLoad, intensityPct, bd.id]
             );
           }
         }
