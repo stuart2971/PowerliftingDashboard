@@ -12,6 +12,39 @@ async function getFullSession(sessionId) {
   const session = sessionRes.rows[0];
   if (!session) return null;
 
+  // Sync any program exercises added to the day after this session was created
+  if (session.program_day_id) {
+    const progExRes = await query(
+      'SELECT * FROM program_exercises WHERE day_id = $1 ORDER BY exercise_order',
+      [session.program_day_id]
+    );
+    const existingLeRes = await query(
+      'SELECT program_exercise_id FROM logged_exercises WHERE session_id = $1 AND program_exercise_id IS NOT NULL',
+      [sessionId]
+    );
+    const existingPeIds = new Set(existingLeRes.rows.map(r => r.program_exercise_id));
+
+    for (const pe of progExRes.rows) {
+      if (!existingPeIds.has(pe.id)) {
+        const leResult = await query(
+          'INSERT INTO logged_exercises (session_id, program_exercise_id, exercise_name, exercise_order) VALUES ($1,$2,$3,$4) RETURNING id',
+          [sessionId, pe.id, pe.name, pe.exercise_order]
+        );
+        const leId = leResult.rows[0].id;
+        const setsRes = await query(
+          'SELECT * FROM program_sets WHERE exercise_id = $1 ORDER BY set_order',
+          [pe.id]
+        );
+        for (const s of setsRes.rows) {
+          await query(
+            'INSERT INTO logged_sets (logged_exercise_id, program_set_id, set_order, set_type, reps, target_rpe) VALUES ($1,$2,$3,$4,$5,$6)',
+            [leId, s.id, s.set_order, s.set_type, s.reps, s.target_rpe]
+          );
+        }
+      }
+    }
+  }
+
   const exRes = await query(
     'SELECT * FROM logged_exercises WHERE session_id = $1 ORDER BY exercise_order',
     [sessionId]
