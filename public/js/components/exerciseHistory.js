@@ -52,7 +52,7 @@ function renderHistoryTable(sets) {
           <th>Reps</th>
           <th>Load (kg)</th>
           <th>RPE</th>
-          <th>Intensity</th>
+          <th class="intensity-col">Intensity</th>
         </tr>
       </thead>
       <tbody>
@@ -63,7 +63,7 @@ function renderHistoryTable(sets) {
             <td>${s.reps}</td>
             <td>${s.load_kg}</td>
             <td>${s.actual_rpe}</td>
-            <td>${s.intensity_pct != null ? s.intensity_pct + '%' : '—'}</td>
+            <td class="intensity-col">${s.intensity_pct != null ? s.intensity_pct + '%' : '—'}</td>
           </tr>`).join('')}
       </tbody>
     </table>`;

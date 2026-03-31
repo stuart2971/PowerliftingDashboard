@@ -56,7 +56,7 @@ export const programAPI = {
   update:        (id, body)      => apiFetch(`/api/programs/${id}`, { method: 'PUT', body }),
   delete:        (id)            => apiFetch(`/api/programs/${id}`, { method: 'DELETE' }),
   assign:        (id, athlId)    => apiFetch(`/api/programs/${id}/assign/${athlId}`, { method: 'POST' }),
-  copyWeek:      (id, weekId, rpeIncrement) => apiFetch(`/api/programs/${id}/copy-week/${weekId}`, { method: 'POST', body: { rpe_increment: rpeIncrement } }),
+  copyWeek:      (id, weekId, exerciseIncrements) => apiFetch(`/api/programs/${id}/copy-week/${weekId}`, { method: 'POST', body: { exercise_increments: exerciseIncrements } }),
   // Weeks
   getWeeks:      (id)            => apiFetch(`/api/programs/${id}/weeks`),
   addWeek:       (id, body)      => apiFetch(`/api/programs/${id}/weeks`, { method: 'POST', body }),

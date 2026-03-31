@@ -766,3 +766,10 @@ tbody td {
 }
 .exercise-data-table tbody tr:hover { background: rgba(0,0,0,0.02); }
 .exercise-data-table .notes-cell { white-space: normal; max-width: 200px; }
+
+/* ── History table mobile ─────────────────────────────────────── */
+@media (max-width: 480px) {
+  .history-table { font-size: 0.75rem; }
+  .history-table td, .history-table th { padding: 5px 6px; }
+  .history-table .intensity-col { display: none; }
+}

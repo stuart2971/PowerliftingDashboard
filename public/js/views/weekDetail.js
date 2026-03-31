@@ -76,18 +76,11 @@ function renderDayCard(day, session) {
   const isLogged = !!session;
   const completedSets = session ? '(tap to view)' : '';
 
-  const exerciseSummary = day.exercises?.map(ex => {
-    const top = ex.sets?.find(s => s.set_type === 'top');
-    const bds = ex.sets?.filter(s => s.set_type === 'backdown') || [];
-    const desc = top
-      ? `${top.reps}@RPE${top.target_rpe ?? '?'}${bds.length ? ` + ${bds.length}×${bds[0].reps}@RPE${bds[0].target_rpe ?? '?'}` : ''}`
-      : `${ex.sets?.length ?? 0} sets`;
-    return `
-      <div class="week-day-exercise">
-        <span class="week-day-exercise-name">${ex.name}</span>
-        <span class="week-day-exercise-desc">${desc}</span>
-      </div>`;
-  }).join('') || '';
+  const exerciseSummary = day.exercises?.map(ex => `
+    <div class="week-day-exercise">
+      <span class="week-day-exercise-name">${ex.name}</span>
+    </div>`
+  ).join('') || '';
 
   return `
     <div class="week-day-card${isLogged ? ' logged' : ''}" data-day-id="${day.id}" ${session ? `data-session-id="${session.id}"` : ''}>
