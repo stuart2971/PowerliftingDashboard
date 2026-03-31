@@ -243,24 +243,25 @@ export async function renderProgramBuilder(app, programId) {
     const dragInfo   = findExById(dragId);
     const targetInfo = findExById(targetId);
     if (!dragInfo || !targetInfo || dragInfo.dayId !== targetInfo.dayId) return;
-    const dragOrder   = dragInfo.ex.exercise_order;
-    const targetOrder = targetInfo.ex.exercise_order;
     const saved = structuredClone(program);
+    let updatedExercises = [];
     for (const w of program.weeks || []) {
       for (const d of w.days || []) {
-        for (const ex of d.exercises || []) {
-          if (String(ex.id) === String(dragId))   ex.exercise_order = targetOrder;
-          if (String(ex.id) === String(targetId)) ex.exercise_order = dragOrder;
-        }
-        d.exercises.sort((a, b) => a.exercise_order - b.exercise_order);
+        if (String(d.id) !== dragInfo.dayId) continue;
+        const dragIdx   = d.exercises.findIndex(e => String(e.id) === String(dragId));
+        const targetIdx = d.exercises.findIndex(e => String(e.id) === String(targetId));
+        if (dragIdx === -1 || targetIdx === -1) continue;
+        const [dragEx] = d.exercises.splice(dragIdx, 1);
+        d.exercises.splice(targetIdx, 0, dragEx);
+        d.exercises.forEach((ex, i) => { ex.exercise_order = i; });
+        updatedExercises = d.exercises;
       }
     }
     render();
     try {
-      await Promise.all([
-        programAPI.updateExercise(dragId,   { exercise_order: targetOrder }),
-        programAPI.updateExercise(targetId, { exercise_order: dragOrder   })
-      ]);
+      await Promise.all(updatedExercises.map(ex =>
+        programAPI.updateExercise(ex.id, { exercise_order: ex.exercise_order })
+      ));
     } catch (err) {
       program = saved;
       render();
