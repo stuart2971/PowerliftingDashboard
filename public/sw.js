@@ -1,4 +1,4 @@
-const CACHE_NAME = 'g5-pl-v6';
+const CACHE_NAME = 'g5-pl-v7';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -22,8 +22,7 @@ const STATIC_ASSETS = [
   '/js/components/setRow.js',
   '/js/components/questionnaire.js',
   '/js/components/exerciseHistory.js',
-  '/icons/icon-192.svg',
-  '/icons/icon-512.svg'
+  '/icons/logo.svg'
 ];
 
 self.addEventListener('install', e => {
