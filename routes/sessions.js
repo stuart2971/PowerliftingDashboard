@@ -43,6 +43,18 @@ async function getFullSession(sessionId) {
         }
       }
     }
+
+    // Clean up orphaned exercises (program exercise was deleted/replaced after session was started).
+    // Only removes exercises with no actual logged data — preserves real workout history.
+    await query(`
+      DELETE FROM logged_exercises
+      WHERE session_id = $1
+        AND program_exercise_id IS NULL
+        AND id NOT IN (
+          SELECT logged_exercise_id FROM logged_sets
+          WHERE load_kg IS NOT NULL OR actual_rpe IS NOT NULL
+        )
+    `, [sessionId]);
   }
 
   const exRes = await query(

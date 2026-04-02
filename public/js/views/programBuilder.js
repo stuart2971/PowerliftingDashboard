@@ -15,19 +15,20 @@ const EXERCISE_TEMPLATES = [
 ];
 
 const MAIN_LIFT_RE = /squat|bench|deadlift|press/i;
+const BIG3 = ['Competition Squat', 'Competition Bench Press', 'Competition Deadlift'];
 
-// Parse shorthand like "Top x2 + 3x4@8 + 2x4@7.5"
+// Parse shorthand like "top 2 @ 8 + 3x5 @ 7.5"
 function parseShorthand(text) {
   if (!text?.trim()) return null;
   const sets = [];
   const parts = text.split('+').map(s => s.trim());
   for (const part of parts) {
-    const topMatch = part.match(/^top\s+x(\d+)(?:@([\d.]+))?$/i);
+    const topMatch = part.match(/^top\s*(\d+)(?:\s*@\s*([\d.]+))?$/i);
     if (topMatch) {
       sets.push({ set_type: 'top', reps: parseInt(topMatch[1]), target_rpe: topMatch[2] ? parseFloat(topMatch[2]) : null });
       continue;
     }
-    const bdMatch = part.match(/^(\d+)x(\d+)(?:@([\d.]+))?$/i);
+    const bdMatch = part.match(/^(\d+)\s*x\s*(\d+)(?:\s*@\s*([\d.]+))?$/i);
     if (bdMatch) {
       const count = parseInt(bdMatch[1]);
       for (let i = 0; i < count; i++) {
@@ -35,7 +36,7 @@ function parseShorthand(text) {
       }
       continue;
     }
-    const singleMatch = part.match(/^(\d+)@([\d.]+)$/i);
+    const singleMatch = part.match(/^(\d+)\s*@\s*([\d.]+)$/i);
     if (singleMatch) {
       sets.push({ set_type: 'backdown', reps: parseInt(singleMatch[1]), target_rpe: parseFloat(singleMatch[2]) });
     }
@@ -165,10 +166,7 @@ export async function renderProgramBuilder(app, programId) {
   function renderExercise(ex) {
     const key = 'e' + ex.id;
     const isCollapsed = collapsed.has(key);
-    const topSet = ex.sets?.find(s => s.set_type === 'top');
-    const exTitle = topSet
-      ? `${ex.name} <span class="ex-top-label">x${topSet.reps}${topSet.target_rpe != null ? ' @ ' + topSet.target_rpe : ''}</span>`
-      : ex.name;
+    const exTitle = ex.name;
     return `
       <div class="program-exercise${isCollapsed ? ' collapsed' : ''}" id="pex-${ex.id}" draggable="true" data-ex-id="${ex.id}">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
@@ -495,8 +493,16 @@ export async function renderProgramBuilder(app, programId) {
       }
     }
 
-    const exRowsHtml = exercises.map(ex => {
-      const defaultInc = MAIN_LIFT_RE.test(ex.name) ? 1 : 0;
+    const sorted = [...exercises].sort((a, b) => {
+      const ai = BIG3.indexOf(a.name), bi = BIG3.indexOf(b.name);
+      if (ai !== -1 && bi !== -1) return ai - bi;
+      if (ai !== -1) return -1;
+      if (bi !== -1) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    const exRowsHtml = sorted.map(ex => {
+      const defaultInc = BIG3.includes(ex.name) ? 0.5 : 0;
       return `
         <div class="copy-week-ex-row">
           <span class="copy-week-ex-name">${ex.name}</span>
@@ -602,8 +608,8 @@ export async function renderProgramBuilder(app, programId) {
       ${!isEdit ? `
         <div class="form-group">
           <label class="form-label">Shorthand (fastest)</label>
-          <input type="text" class="form-control" id="set-shorthand" placeholder="e.g. 3x4@8 or Top x2@8 + 3x4@7.5" autofocus>
-          <div class="form-hint">Leave blank to use fields below</div>
+          <input type="text" class="form-control" id="set-shorthand" placeholder="e.g. Top 3 @ 5 + 2x8 @ 5" autofocus>
+          <div class="form-hint">e.g. <em>Top 3 @ 5 + 2x8 @ 5</em> — top set first, then NxReps @ RPE for backdowns. Leave blank to use fields below.</div>
         </div>
         <div class="divider"></div>
       ` : ''}
@@ -746,8 +752,8 @@ export async function renderProgramBuilder(app, programId) {
       </div>
       <div class="form-group">
         <label class="form-label">Shorthand Sets (optional)</label>
-        <input type="text" class="form-control" id="ex-shorthand" placeholder="e.g. Top x2 + 3x4@8 + 2x4@7.5">
-        <div class="form-hint">Top x{reps} = top set &nbsp;|&nbsp; {count}x{reps}@{rpe} = backdowns &nbsp;|&nbsp; leave blank to add sets manually</div>
+        <input type="text" class="form-control" id="ex-shorthand" placeholder="e.g. Top 3 @ 5 + 2x8 @ 5">
+        <div class="form-hint">e.g. <em>Top 3 @ 5 + 2x8 @ 5</em> — top set first, then NxReps @ RPE for backdowns. Leave blank to add sets manually.</div>
       </div>
       <div class="form-group">
         <label class="form-label">Coach Notes (optional)</label>
