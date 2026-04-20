@@ -5,14 +5,11 @@
   justify-content: center;
   gap: 8px;
   padding: 9px 18px;
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--radius);
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-body);
   font-size: 0.95rem;
-  font-weight: 700;
-  font-style: italic;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-weight: 500;
   cursor: pointer;
   transition: all var(--transition);
   white-space: nowrap;
@@ -25,31 +22,39 @@
 }
 
 .btn-primary {
-  background: var(--accent);
-  color: #000;
+  background: #111827;
+  color: #fff;
 }
 .btn-primary:hover:not(:disabled) {
-  background: var(--accent-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(76,175,80,0.4);
+  background: #000;
 }
 
 .btn-secondary {
   background: var(--bg-card-alt);
   color: var(--text-primary);
-  border: 1px solid var(--border);
+  border-color: var(--border);
 }
 .btn-secondary:hover:not(:disabled) {
-  background: #444;
-  border-color: #555;
+  background: #eef2f6;
 }
 
+.btn-text {
+  background: transparent;
+  color: var(--accent);
+  border: none;
+  padding-left: 0;
+  padding-right: 0;
+  font-weight: 500;
+}
+.btn-text:hover:not(:disabled) { opacity: 0.75; }
+
 .btn-danger {
-  background: var(--danger);
-  color: white;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
 }
 .btn-danger:hover:not(:disabled) {
-  background: #c62828;
+  background: #fee2e2;
 }
 
 .btn-ghost {
@@ -85,7 +90,7 @@
 
 .form-label {
   display: block;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.8rem;
   font-weight: 700;
   font-style: italic;
@@ -100,12 +105,12 @@
   width: 100%;
   padding: 10px 12px;
   background: var(--bg-input);
-  border: 1px solid var(--border);
+  border: none;
   border-radius: var(--radius);
   color: var(--text-primary);
-  font-family: 'Barlow', sans-serif;
+  font-family: var(--font-body);
   font-size: 0.95rem;
-  transition: border-color var(--transition), box-shadow var(--transition);
+  transition: box-shadow var(--transition);
   appearance: none;
   -webkit-appearance: none;
 }
@@ -113,8 +118,7 @@
 .form-control:focus,
 .form-select:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(76,175,80,0.15);
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.12);
 }
 
 .form-control::placeholder { color: var(--text-muted); }
@@ -172,7 +176,7 @@ thead {
 
 thead th {
   padding: 10px 14px;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.8rem;
   font-weight: 700;
   font-style: italic;
@@ -222,7 +226,7 @@ tbody td {
 }
 
 .card-title {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 800;
   font-style: italic;
@@ -240,7 +244,7 @@ tbody td {
   border-radius: 20px;
   font-size: 0.72rem;
   font-weight: 700;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   white-space: nowrap;
@@ -257,7 +261,7 @@ tbody td {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 4px;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.85rem;
   font-weight: 700;
   min-width: 36px;
@@ -291,7 +295,7 @@ tbody td {
 }
 
 .empty-state-title {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.2rem;
   font-weight: 700;
   font-style: italic;
@@ -318,12 +322,12 @@ tbody td {
 }
 
 .stat-chip-value {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.8rem;
-  font-weight: 800;
-  font-style: italic;
-  color: var(--accent);
+  font-weight: 600;
+  color: var(--text-primary);
   line-height: 1;
+  letter-spacing: -0.02em;
 }
 
 .stat-chip-label {
@@ -340,7 +344,7 @@ tbody td {
   padding: 2px 10px;
   border-radius: 3px;
   font-size: 0.75rem;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -387,7 +391,7 @@ tbody td {
   border-radius: 6px;
   background: var(--bg-input);
   color: var(--text-muted);
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
@@ -413,61 +417,17 @@ tbody td {
 /* Target RPE indicator (unselected, shown as outline) */
 .rpe-btn.target { border-style: dashed; opacity: 0.7; }
 
-.set-target-rpe {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  margin-top: 3px;
-  font-style: italic;
-}
-
-/* ── RPE Control ──────────────────────────────────────────────── */
-.rpe-control {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.rpe-adj-btn {
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg-card-alt);
-  color: var(--text-secondary);
-  font-size: 1.1rem;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
-  flex-shrink: 0;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.rpe-adj-btn:active { background: var(--accent); border-color: var(--accent); color: #000; transform: scale(0.92); }
-.rpe-adj-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-
-.rpe-control .set-input { width: 70px; text-align: center; flex-shrink: 0; }
-.rpe-input.prescribed { border-color: rgba(255,152,0,0.4); color: var(--text-secondary); }
-.rpe-input.saved { border-color: var(--accent); color: var(--accent); }
-
-/* ── Load Control ─────────────────────────────────────────────── */
-.load-control {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
+/* ── RPE / Load / Reps adj buttons ───────────────────────────── */
+.reps-adj-btn,
+.rpe-adj-btn,
 .load-adj-btn {
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--bg-card-alt);
   color: var(--text-secondary);
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
   display: flex;
@@ -479,18 +439,12 @@ tbody td {
   -webkit-tap-highlight-color: transparent;
 }
 
-.load-adj-btn:active {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #000;
-  transform: scale(0.92);
-}
-
-.load-control .set-input {
-  width: 80px;
-  text-align: center;
-  flex-shrink: 0;
-}
+.reps-adj-btn:active,
+.rpe-adj-btn:active,
+.load-adj-btn:active { background: var(--accent); border-color: var(--accent); color: #000; transform: scale(0.92); }
+.reps-adj-btn:disabled,
+.rpe-adj-btn:disabled,
+.load-adj-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 
 /* ── Exercise Templates (Program Builder) ─────────────────────── */
 .ex-template-grid {
@@ -622,7 +576,7 @@ tbody td {
   color: var(--text-primary);
   padding: 6px 8px;
   font-size: 0.8rem;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
 }
 
 .history-table-wrap {
@@ -634,7 +588,7 @@ tbody td {
 .history-table {
   width: 100%;
   border-collapse: collapse;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.85rem;
 }
 
@@ -678,12 +632,19 @@ tbody td {
 }
 
 .exercise-history-btn {
-  font-size: 0.72rem;
-  padding: 3px 8px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 3px 6px;
   opacity: 0.7;
+  transition: opacity var(--transition);
 }
 
-.exercise-history-btn:hover { opacity: 1; }
+.exercise-history-btn:hover { opacity: 1; color: var(--text-primary); }
 
 /* ── Est. load label ─────────────────────────────────────────── */
 .set-estimate-label {
@@ -772,4 +733,22 @@ tbody td {
   .history-table { font-size: 0.75rem; }
   .history-table td, .history-table th { padding: 5px 6px; }
   .history-table .intensity-col { display: none; }
+}
+
+/* ── Set row controls mobile ──────────────────────────────────── */
+@media (max-width: 600px) {
+  .reps-adj-btn,
+  .load-adj-btn,
+  .rpe-adj-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 0.85rem;
+  }
+
+  .load-control .set-input,
+  .rpe-control .set-input {
+    width: auto !important;
+    flex: 1;
+    min-width: 40px;
+  }
 }

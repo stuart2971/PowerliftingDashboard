@@ -1,49 +1,64 @@
-const FIELDS = ['sleep', 'mood', 'motivation', 'soreness', 'fatigue', 'readiness'];
+const FIELDS  = ['sleep', 'mood', 'motivation', 'soreness', 'fatigue', 'readiness'];
+const LABELS  = ['Sleep', 'Mood', 'Motivation', 'Soreness', 'Fatigue', 'Readiness'];
 const OPTIONS = ['', 'Poor', 'Fair', 'Good', 'Great'];
-const COLOR_MAP = { Poor: 'poor', Fair: 'fair', Good: 'good', Great: 'great' };
+
+function fieldToSlider(val) {
+  const idx = OPTIONS.indexOf(val || '');
+  return idx >= 0 ? idx : 0;
+}
+
+function sliderToField(n) {
+  return OPTIONS[parseInt(n)] || '';
+}
 
 export function renderQuestionnaire(session) {
   return `
     <div class="questionnaire-section">
       <div class="questionnaire-title">Session Questionnaire</div>
-      <div class="questionnaire-grid">
-        ${FIELDS.map(f => `
-          <div class="questionnaire-item">
-            <label>${f.toUpperCase()}</label>
-            <select class="q-select" data-field="${f}" onchange="this.className='q-select '+(this.value ? '${COLOR_MAP[OPTIONS[1]]}' : '')">
-              ${OPTIONS.map(o => `<option value="${o}" ${session?.[f] === o ? 'selected' : ''}>${o || '—'}</option>`).join('')}
-            </select>
-          </div>
-        `).join('')}
-        <div class="questionnaire-item">
-          <label>NOTES</label>
-          <input type="text" class="form-control q-notes" placeholder="Session notes…" value="${session?.session_notes || ''}" style="padding:7px 10px;font-size:0.82rem;">
+      <div class="questionnaire-list">
+        ${FIELDS.map((f, i) => {
+          const val = session?.[f] || '';
+          const colorCls = val ? 'q-val-' + val.toLowerCase() : '';
+          return `
+            <div class="questionnaire-item">
+              <div class="questionnaire-item-header">
+                <span class="q-label">${LABELS[i].toUpperCase()}:</span>
+                <span class="q-value ${colorCls}" data-field="${f}">${val || '—'}</span>
+              </div>
+              <input type="range" class="q-slider" data-field="${f}"
+                min="1" max="4" step="1" value="${fieldToSlider(val) || 1}">
+            </div>`;
+        }).join('')}
+        <div class="questionnaire-item q-notes-item">
+          <span class="q-label">NOTES</span>
+          <input type="text" class="form-control q-notes" placeholder="Session notes…"
+            value="${session?.session_notes || ''}">
         </div>
       </div>
     </div>`;
 }
 
 export function attachQuestionnaireListeners(container, onSave) {
-  const selects = container.querySelectorAll('.q-select');
+  const sliders    = container.querySelectorAll('.q-slider');
   const notesInput = container.querySelector('.q-notes');
 
-  function applyColor(sel) {
-    sel.className = 'q-select ' + (sel.value ? sel.value.toLowerCase() : '');
-  }
-
-  selects.forEach(sel => {
-    applyColor(sel);
-    sel.addEventListener('change', () => {
-      applyColor(sel);
-      saveQuestionnaire();
+  sliders.forEach(slider => {
+    slider.addEventListener('input', () => {
+      const val       = sliderToField(slider.value);
+      const valueSpan = container.querySelector(`.q-value[data-field="${slider.dataset.field}"]`);
+      if (valueSpan) {
+        valueSpan.textContent = val || '—';
+        valueSpan.className   = `q-value${val ? ' q-val-' + val.toLowerCase() : ''}`;
+      }
     });
+    slider.addEventListener('change', saveQuestionnaire);
   });
 
   notesInput?.addEventListener('blur', saveQuestionnaire);
 
   function saveQuestionnaire() {
     const data = {};
-    selects.forEach(s => { data[s.dataset.field] = s.value || null; });
+    sliders.forEach(s => { data[s.dataset.field] = sliderToField(s.value) || null; });
     data.session_notes = notesInput?.value || null;
     onSave(data);
   }

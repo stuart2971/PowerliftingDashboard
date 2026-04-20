@@ -6,29 +6,30 @@
   right: 0;
   height: 60px;
   background: var(--bg-secondary);
-  border-bottom: 2px solid var(--accent);
+  border-bottom: 1px solid var(--border);
   z-index: 100;
   display: flex;
   align-items: center;
   padding: 0 20px;
   gap: 20px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 
 .navbar-brand {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 1.5rem;
-  font-weight: 800;
-  font-style: italic;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 600;
   color: var(--text-primary);
   text-decoration: none;
   display: flex;
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  letter-spacing: -0.01em;
+  cursor: pointer;
 }
 
-.navbar-brand .brand-accent { color: var(--accent); }
+.navbar-brand .brand-accent { color: #86efac; }
 
 .navbar-links {
   display: flex;
@@ -40,12 +41,9 @@
 .nav-link {
   padding: 6px 12px;
   border-radius: var(--radius);
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.85rem;
-  font-weight: 700;
-  font-style: italic;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 400;
   color: var(--text-muted);
   text-decoration: none;
   transition: all var(--transition);
@@ -53,7 +51,7 @@
 }
 
 .nav-link:hover { color: var(--text-primary); background: rgba(0,0,0,0.04); }
-.nav-link.active { color: var(--accent); background: var(--accent-dim); }
+.nav-link.active { color: var(--text-primary); background: #f1f5f9; font-weight: 500; }
 
 .navbar-right {
   display: flex;
@@ -66,8 +64,6 @@
 .navbar-user {
   font-size: 0.82rem;
   color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 @media (max-width: 600px) {
@@ -99,7 +95,7 @@
   background: var(--bg-secondary);
   padding: 32px 32px 24px;
   text-align: center;
-  border-bottom: 2px solid var(--accent);
+  border-bottom: 1px solid var(--border);
 }
 
 .login-logo-icon {
@@ -110,16 +106,18 @@
 }
 
 .login-logo {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 3rem;
-  font-weight: 800;
-  font-style: italic;
-  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  font-weight: 600;
+  color: var(--text-primary);
   line-height: 1;
+  letter-spacing: -0.02em;
 }
 
+.login-logo-accent { color: #86efac; }
+
 .login-logo-sub {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.3em;
@@ -141,19 +139,16 @@
   padding: 10px;
   text-align: center;
   cursor: pointer;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-body);
   font-size: 0.9rem;
-  font-weight: 700;
-  font-style: italic;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-weight: 400;
   color: var(--text-muted);
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   transition: all var(--transition);
 }
 
-.login-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.login-tab.active { color: #111827; border-bottom-color: #111827; font-weight: 500; }
 
 /* ── Athlete Dashboard ────────────────────────────────────────── */
 .week-header {
@@ -168,7 +163,7 @@
 }
 
 .week-title {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.6rem;
   font-weight: 800;
   font-style: italic;
@@ -191,7 +186,7 @@
 }
 
 .day-header {
-  background: #222;
+  background: var(--bg-card-alt);
   padding: 14px 20px;
   display: flex;
   align-items: center;
@@ -201,10 +196,10 @@
   border-bottom: 1px solid var(--border);
 }
 
-.day-header:hover { background: #272727; }
+.day-header:hover { background: #eef2f6; }
 
 .day-title {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.2rem;
   font-weight: 800;
   font-style: italic;
@@ -222,7 +217,7 @@
 }
 
 .questionnaire-title {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.8rem;
   font-weight: 700;
   font-style: italic;
@@ -232,55 +227,81 @@
   margin-bottom: 12px;
 }
 
-.questionnaire-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr) 2fr;
-  gap: 8px;
-  align-items: end;
+.questionnaire-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-@media (max-width: 900px) {
-  .questionnaire-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+.questionnaire-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
-@media (max-width: 480px) {
-  .questionnaire-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+.questionnaire-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.questionnaire-item label {
-  display: block;
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 0.7rem;
+.q-label {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
   font-weight: 700;
   font-style: italic;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-muted);
-  margin-bottom: 4px;
 }
 
-.questionnaire-item select {
-  width: 100%;
-  padding: 7px 10px;
-  background: var(--bg-input);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text-primary);
-  font-family: 'Barlow', sans-serif;
-  font-size: 0.82rem;
-  cursor: pointer;
+.q-value {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.q-val-poor  { color: var(--danger); }
+.q-val-fair  { color: var(--warning); }
+.q-val-good  { color: var(--info); }
+.q-val-great { color: var(--accent); }
+
+.q-slider {
+  -webkit-appearance: none;
   appearance: none;
+  width: 100%;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
 }
 
-.questionnaire-item select:focus { outline: none; border-color: var(--accent); }
-.questionnaire-item select.great { border-color: var(--accent); color: var(--accent); }
-.questionnaire-item select.good  { border-color: var(--info);   color: var(--info); }
-.questionnaire-item select.fair  { border-color: var(--warning);color: var(--warning); }
-.questionnaire-item select.poor  { border-color: var(--danger); color: var(--danger); }
+.q-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #111827;
+  cursor: pointer;
+}
+
+.q-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #111827;
+  cursor: pointer;
+  border: none;
+}
+
+.q-notes-item .q-label {
+  margin-bottom: 4px;
+  display: block;
+}
 
 /* ── Exercise Block ───────────────────────────────────────────── */
 .exercise-block {
@@ -300,7 +321,7 @@
 }
 
 .exercise-name {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 800;
   font-style: italic;
@@ -322,15 +343,16 @@
 
 .sets-table-head {
   display: grid;
-  grid-template-columns: 110px 1fr 1fr 1fr auto;
+  grid-template-columns: repeat(4, 1fr);
   padding: 6px 16px;
   background: var(--bg-card-alt);
-  gap: 16px;
+  gap: 8px;
   align-items: center;
+  text-align: center;
 }
 
 .sets-table-head span {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.72rem;
   font-weight: 700;
   font-style: italic;
@@ -341,64 +363,75 @@
 
 .set-row {
   display: grid;
-  grid-template-columns: 110px 1fr 1fr 1fr auto;
-  padding: 12px 16px;
-  gap: 16px;
-  align-items: start;
+  grid-template-columns: repeat(4, 1fr);
+  padding: 14px 8px;
+  gap: 8px;
+  align-items: center;
   border-bottom: 1px solid var(--border);
   transition: background var(--transition);
+  background: #fff;
 }
 
 .set-row:last-child { border-bottom: none; }
-.set-row.top-set { background: rgba(34,197,94,0.04); border-left: 3px solid var(--accent); }
+.set-row.top-set { background: var(--bg-card-alt); border-left: 3px solid var(--border); }
 .set-row.backdown { border-left: 3px solid transparent; }
-.set-row:hover { background: rgba(0,0,0,0.02); }
 
-/* Named column divs inside set-row */
-.set-col-type {
+.set-col {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-}
-
-.set-col-load {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.set-col-rpe {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.set-col-notes {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.set-col-action {
-  display: flex;
-  align-items: flex-start;
-  padding-top: 2px;
-}
-
-.set-reps-wrap {
-  display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
 }
 
-.set-reps-wrap .set-input {
-  width: 52px;
+.set-col-action { justify-content: center; }
+
+/* Shared adj-style controls (reps / load / rpe) */
+.reps-control,
+.load-control,
+.rpe-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.set-reps-label {
-  font-size: 0.75rem;
+/* Hide number input spinners */
+.load-input::-webkit-inner-spin-button,
+.load-input::-webkit-outer-spin-button,
+.reps-input::-webkit-inner-spin-button,
+.reps-input::-webkit-outer-spin-button,
+.rpe-input::-webkit-inner-spin-button,
+.rpe-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.load-input, .reps-input, .rpe-input { -moz-appearance: textfield; }
+
+.load-input,
+.reps-input,
+.rpe-input {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  width: 48px;
+  padding: 0;
+  text-align: center;
+}
+
+.load-input:focus,
+.reps-input:focus,
+.rpe-input:focus { outline: none !important; }
+
+.rpe-input.rpe-high   { color: #854d0e; }
+.rpe-input.rpe-medium { color: #c2410c; }
+.rpe-input.rpe-low    { color: #1d4ed8; }
+
+.set-target-rpe {
+  font-size: 0.72rem;
   color: var(--text-muted);
-  font-family: 'Barlow Condensed', sans-serif;
+  font-style: normal;
+  text-align: center;
 }
 
 .coach-note-text {
@@ -424,7 +457,7 @@
 }
 
 .session-progress-count {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.1rem;
   font-weight: 800;
   font-style: italic;
@@ -445,7 +478,7 @@
 
 .session-progress-fill {
   height: 100%;
-  background: var(--accent);
+  background: #111827;
   border-radius: 3px;
   transition: width 0.4s ease;
 }
@@ -454,29 +487,10 @@
 .last-load-hint {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: rgba(76,175,80,0.06);
-  border: 1px solid rgba(76,175,80,0.2);
-  border-radius: var(--radius);
-  margin-top: 6px;
-  flex-wrap: wrap;
-}
-
-.last-load-text {
-  font-size: 0.82rem;
-  color: var(--accent);
-  font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 700;
-}
-
-.last-load-date {
-  font-size: 0.75rem;
-  color: var(--text-muted);
+  margin-left: auto;
 }
 
 .last-load-fill-btn {
-  margin-left: auto;
   padding: 3px 10px !important;
   font-size: 0.75rem !important;
 }
@@ -493,7 +507,7 @@
 }
 
 .set-type-label {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.75rem;
   font-weight: 700;
   font-style: italic;
@@ -508,7 +522,7 @@
   border: 1px solid var(--border);
   border-radius: 4px;
   color: var(--text-primary);
-  font-family: 'Barlow', sans-serif;
+  font-family: var(--font-body);
   font-size: 0.9rem;
   padding: 5px 8px;
   width: 100%;
@@ -550,7 +564,7 @@
 .set-intensity {
   font-size: 0.82rem;
   color: var(--text-muted);
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
 }
 
 .set-save-btn {
@@ -559,7 +573,7 @@
   color: var(--accent);
   border-radius: 4px;
   padding: 4px 10px;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.75rem;
   font-weight: 700;
   font-style: italic;
@@ -579,7 +593,7 @@
   color: var(--text-muted);
   border-radius: 4px;
   padding: 4px 8px;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -591,41 +605,13 @@
 
 .set-row.logged { opacity: 0.9; }
 .set-row.logged .set-input { background: var(--bg-card-alt); cursor: not-allowed; color: var(--text-muted); border-color: var(--border); }
+.set-row.logged .reps-adj-btn,
 .set-row.logged .load-adj-btn,
 .set-row.logged .rpe-adj-btn { opacity: 0.25; pointer-events: none; }
 
-@media (max-width: 700px) {
-  .sets-table-head,
-  .set-row {
-    grid-template-columns: 90px 1fr 1fr auto;
-    gap: 10px;
-  }
-  .set-col-notes { display: none; }
-  .sets-table-head span:nth-child(4) { display: none; }
-}
-
 @media (max-width: 480px) {
-  .sets-table-head,
-  .set-row {
-    grid-template-columns: 80px 1fr 1fr auto;
-    padding: 10px 10px;
-    gap: 8px;
-  }
-}
-
-/* At very small screens, collapse set-row to 2 cols / 2 rows */
-@media (max-width: 380px) {
-  .sets-table-head { display: none; }
-  .set-row {
-    grid-template-columns: 1fr auto;
-    grid-template-rows: auto auto;
-    padding: 10px 8px;
-    gap: 6px 8px;
-  }
-  .set-col-type   { grid-column: 1; grid-row: 1; }
-  .set-col-action { grid-column: 2; grid-row: 1; align-self: center; }
-  .set-col-load   { grid-column: 1; grid-row: 2; }
-  .set-col-rpe    { grid-column: 2; grid-row: 2; }
+  .set-row { gap: 10px; padding: 12px; }
+  .reps-adj-btn, .load-adj-btn, .rpe-adj-btn { width: 26px; height: 26px; font-size: 0.9rem; }
 }
 
 /* ── Athlete Profile ──────────────────────────────────────────── */
@@ -655,7 +641,7 @@
 .info-row:last-child { border-bottom: none; }
 
 .info-label {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.78rem;
   font-weight: 700;
   font-style: italic;
@@ -666,7 +652,7 @@
 }
 
 .info-value {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.95rem;
   font-weight: 700;
   font-style: italic;
@@ -679,7 +665,7 @@
 .pb-table tbody td { text-align: center; color: var(--text-secondary); }
 .pb-table tbody td:first-child { color: var(--text-muted); font-size: 0.8rem; }
 .pb-table .pb-val {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 800;
   font-style: italic;
@@ -702,8 +688,7 @@
 }
 
 .athlete-card:hover {
-  border-color: var(--accent);
-  background: rgba(76,175,80,0.04);
+  background: var(--bg-card-alt);
   transform: translateY(-1px);
 }
 
@@ -716,7 +701,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.2rem;
   font-weight: 800;
   font-style: italic;
@@ -726,7 +711,7 @@
 
 .athlete-info { flex: 1; min-width: 0; }
 .athlete-name {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.05rem;
   font-weight: 800;
   font-style: italic;
@@ -763,7 +748,7 @@
 }
 
 .program-week-title {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 800;
   font-style: italic;
@@ -785,7 +770,7 @@
 }
 
 .program-day-title {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.9rem;
   font-weight: 700;
   font-style: italic;
@@ -799,7 +784,7 @@
 }
 
 .program-exercise-name {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.88rem;
   font-weight: 700;
   font-style: italic;
@@ -896,7 +881,7 @@
 .lift-analytics-btn {
   flex: 1 1 80px;
   min-width: 80px;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-weight: 700;
   font-style: italic;
   text-transform: uppercase;
@@ -928,12 +913,12 @@
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--accent-hover);
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   margin-bottom: 4px;
 }
 
 .today-card-title {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.3rem;
   font-weight: 800;
   font-style: italic;
@@ -951,7 +936,7 @@
 .today-avg-time {
   font-size: 0.8rem;
   color: var(--text-muted);
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   white-space: nowrap;
 }
 
@@ -978,7 +963,7 @@
 }
 
 .today-exercise-name {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.95rem;
   font-weight: 700;
   font-style: italic;
@@ -989,11 +974,11 @@
 .today-exercise-desc {
   font-size: 0.78rem;
   color: var(--text-muted);
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
 }
 
 .today-prediction {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 700;
   color: var(--accent-hover);
@@ -1042,7 +1027,7 @@
 }
 
 .week-nav-label {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 1rem;
   font-weight: 700;
   font-style: italic;
@@ -1084,7 +1069,7 @@
 }
 
 .week-day-title {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 1.1rem;
   font-weight: 800;
   font-style: italic;
@@ -1113,7 +1098,7 @@
 }
 
 .week-day-exercise-name {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--font-display);
   font-size: 0.9rem;
   font-weight: 700;
   font-style: italic;

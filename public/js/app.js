@@ -87,23 +87,23 @@ async function router() {
 
   // Redirect unauthenticated users
   if (!user && path !== '/login' && path !== '/register') {
-    navigate('/login');
+    window.location.replace(window.location.pathname + '#/login');
     return;
   }
 
   // Redirect authenticated users away from login
   if (user && (path === '/login' || path === '/register' || path === '/')) {
-    navigate(user.role === 'coach' ? '/coach' : '/dashboard');
+    window.location.replace(window.location.pathname + '#' + (user.role === 'coach' ? '/coach' : '/dashboard'));
     return;
   }
 
-  // Role-based route guards
+  // Role-based route guards — use replace so bad entries don't pollute back-button history
   if (user && user.role !== 'coach' && path.startsWith('/coach')) {
-    navigate('/dashboard');
+    window.location.replace(window.location.pathname + '#/dashboard');
     return;
   }
   if (user && user.role === 'coach' && path === '/dashboard') {
-    navigate('/coach');
+    window.location.replace(window.location.pathname + '#/coach');
     return;
   }
 

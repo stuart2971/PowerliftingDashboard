@@ -1,4 +1,4 @@
-import { toast, navigate } from '../app.js';
+import { toast, navigate, getUser } from '../app.js';
 import { programAPI, athleteAPI } from '../api.js';
 
 const EXERCISE_TEMPLATES = [
@@ -105,7 +105,7 @@ export async function renderProgramBuilder(app, programId) {
             <div class="page-subtitle">Program Builder ${assignedAthlete ? '— ' + assignedAthlete.name : ''}</div>
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <button class="btn btn-secondary" onclick="window.location.hash='#/coach'">← Back</button>
+            <button class="btn btn-secondary" id="back-btn">← Back</button>
             ${!program.athlete_id
               ? `<button class="btn btn-secondary" id="assign-btn">Assign Athlete</button>`
               : `<span class="badge badge-accent" style="padding:8px 14px">${assignedAthlete?.name ?? 'Assigned'}</span>`
@@ -270,6 +270,10 @@ export async function renderProgramBuilder(app, programId) {
   // ── Attach listeners ─────────────────────────────────────────────────────
 
   function attachListeners() {
+    document.getElementById('back-btn').addEventListener('click', () => {
+      navigate(getUser()?.role === 'coach' ? '/coach' : '/dashboard');
+    });
+
     document.getElementById('add-week-btn').addEventListener('click', () => {
       if (program.weeks?.length > 0) showCopyWeekModal();
       else createEmptyWeek();
@@ -292,15 +296,14 @@ export async function renderProgramBuilder(app, programId) {
         const weekId = btn.dataset.weekId;
         const week = program.weeks.find(w => String(w.id) === weekId);
         const dayNum = (week?.days?.length || 0) + 1;
-        const label = prompt(`Day ${dayNum} label (e.g. Monday, Upper):`, `Day ${dayNum}`) ?? `Day ${dayNum}`;
         const saved = structuredClone(program);
-        const tempDay = { id: tmpId(), week_id: weekId, day_number: dayNum, label, exercises: [] };
+        const tempDay = { id: tmpId(), week_id: weekId, day_number: dayNum, label: '', exercises: [] };
         const targetWeek = program.weeks.find(w => String(w.id) === String(weekId));
         if (!targetWeek.days) targetWeek.days = [];
         targetWeek.days.push(tempDay);
         render();
         try {
-          const day = await programAPI.addDay(weekId, { day_number: dayNum, label });
+          const day = await programAPI.addDay(weekId, { day_number: dayNum, label: '' });
           resolveTemp(tempDay.id, day.id);
           render();
         } catch (err) {
@@ -796,7 +799,7 @@ export async function renderProgramBuilder(app, programId) {
       toast(`${name} added${parsedSets?.length ? ` with ${parsedSets.length} sets` : ''}`, 'success');
 
       try {
-        const ex = await programAPI.addExercise(dayId, { name, notes });
+        const ex = await programAPI.addExercise(dayId, { name, notes, exercise_order: exOrder });
         resolveTemp(tempExId, ex.id);
         if (parsedSets?.length) {
           const newSets = await Promise.all(

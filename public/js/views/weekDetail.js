@@ -54,7 +54,6 @@ export async function renderWeekDetail(app, weekId) {
   app.querySelectorAll('.day-start-btn').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
-      const { programAPI: pa, sessionAPI: sa } = await import('../api.js');
       btn.disabled = true;
       btn.textContent = 'Starting…';
       try {

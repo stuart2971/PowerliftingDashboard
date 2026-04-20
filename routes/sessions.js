@@ -65,7 +65,7 @@ async function getFullSession(sessionId) {
 
   for (const ex of exercises) {
     const setRes = await query(
-      'SELECT * FROM logged_sets WHERE logged_exercise_id = $1 ORDER BY set_order',
+      'SELECT * FROM logged_sets WHERE logged_exercise_id = $1 ORDER BY set_order, id',
       [ex.id]
     );
     ex.sets = setRes.rows;
@@ -286,13 +286,13 @@ router.put('/:id', async (req, res) => {
     const { sleep, mood, motivation, soreness, fatigue, readiness, session_notes } = req.body;
     await query(`
       UPDATE training_sessions SET
-        sleep          = COALESCE($1, sleep),
-        mood           = COALESCE($2, mood),
-        motivation     = COALESCE($3, motivation),
-        soreness       = COALESCE($4, soreness),
-        fatigue        = COALESCE($5, fatigue),
-        readiness      = COALESCE($6, readiness),
-        session_notes  = COALESCE($7, session_notes)
+        sleep          = $1,
+        mood           = $2,
+        motivation     = $3,
+        soreness       = $4,
+        fatigue        = $5,
+        readiness      = $6,
+        session_notes  = $7
       WHERE id = $8
     `, [sleep, mood, motivation, soreness, fatigue, readiness, session_notes, req.params.id]);
     res.json(await getFullSession(req.params.id));
@@ -321,7 +321,7 @@ router.post('/:id/exercises', async (req, res) => {
 // POST /api/sessions/exercises/:exId/sets — log a set
 router.post('/exercises/:exId/sets', async (req, res) => {
   try {
-    const { set_type, reps, load_kg, actual_rpe, target_rpe, program_set_id, set_order, athlete_notes } = req.body;
+    const { set_id, set_type, reps, load_kg, actual_rpe, target_rpe, program_set_id, set_order, athlete_notes } = req.body;
     if (!set_type || !reps) return res.status(400).json({ error: 'set_type and reps required' });
 
     const leRes = await query('SELECT * FROM logged_exercises WHERE id = $1', [req.params.exId]);
@@ -329,11 +329,14 @@ router.post('/exercises/:exId/sets', async (req, res) => {
     if (!le) return res.status(404).json({ error: 'Exercise not found' });
 
     if (set_type === 'top') {
-      const existingRes = await query(
-        "SELECT * FROM logged_sets WHERE logged_exercise_id = $1 AND set_type = 'top' ORDER BY set_order LIMIT 1",
-        [req.params.exId]
-      );
+      const existingRes = set_id
+        ? await query('SELECT * FROM logged_sets WHERE id = $1 AND logged_exercise_id = $2', [set_id, req.params.exId])
+        : await query("SELECT * FROM logged_sets WHERE logged_exercise_id = $1 AND set_type = 'top' ORDER BY set_order, id LIMIT 1", [req.params.exId]);
       const existing = existingRes.rows[0];
+
+      if (existing && existing.set_type !== 'top') {
+        return res.status(400).json({ error: 'set_type mismatch: set belongs to a different type' });
+      }
 
       let e1rm = null;
       if (load_kg && reps && actual_rpe) e1rm = calcE1RM(load_kg, reps, actual_rpe);
@@ -344,15 +347,27 @@ router.post('/exercises/:exId/sets', async (req, res) => {
           [reps, load_kg, actual_rpe, target_rpe, e1rm ? calcIntensityPct(load_kg, e1rm) : null, athlete_notes || null, existing.id]
         );
       } else {
-        await query(
-          "INSERT INTO logged_sets (logged_exercise_id, program_set_id, set_order, set_type, reps, load_kg, actual_rpe, target_rpe, intensity_pct, athlete_notes) VALUES ($1,$2,$3,'top',$4,$5,$6,$7,$8,$9)",
-          [req.params.exId, program_set_id || null, set_order || 0, reps, load_kg, actual_rpe, target_rpe || null, e1rm ? calcIntensityPct(load_kg, e1rm) : null, athlete_notes || null]
+        // Fallback: look for an unlogged top set before inserting a new one
+        const fallbackRes = await query(
+          "SELECT * FROM logged_sets WHERE logged_exercise_id = $1 AND set_type = 'top' AND actual_rpe IS NULL ORDER BY set_order, id LIMIT 1",
+          [req.params.exId]
         );
+        if (fallbackRes.rows[0]) {
+          await query(
+            'UPDATE logged_sets SET reps=$1, load_kg=$2, actual_rpe=$3, target_rpe=COALESCE($4,target_rpe), intensity_pct=$5, athlete_notes=$6 WHERE id=$7',
+            [reps, load_kg, actual_rpe, target_rpe, e1rm ? calcIntensityPct(load_kg, e1rm) : null, athlete_notes || null, fallbackRes.rows[0].id]
+          );
+        } else {
+          await query(
+            "INSERT INTO logged_sets (logged_exercise_id, program_set_id, set_order, set_type, reps, load_kg, actual_rpe, target_rpe, intensity_pct, athlete_notes) VALUES ($1,$2,$3,'top',$4,$5,$6,$7,$8,$9)",
+            [req.params.exId, program_set_id || null, set_order || 0, reps, load_kg, actual_rpe, target_rpe || null, e1rm ? calcIntensityPct(load_kg, e1rm) : null, athlete_notes || null]
+          );
+        }
       }
 
       if (e1rm) {
         const bdRes = await query(
-          "SELECT * FROM logged_sets WHERE logged_exercise_id = $1 AND set_type = 'backdown' ORDER BY set_order",
+          "SELECT * FROM logged_sets WHERE logged_exercise_id = $1 AND set_type = 'backdown' ORDER BY set_order, id",
           [req.params.exId]
         );
         for (const bd of bdRes.rows) {
@@ -368,10 +383,16 @@ router.post('/exercises/:exId/sets', async (req, res) => {
       }
     } else {
       // Backdown
-      const existingRes = program_set_id
-        ? await query('SELECT * FROM logged_sets WHERE logged_exercise_id = $1 AND program_set_id = $2 LIMIT 1', [req.params.exId, program_set_id])
-        : { rows: [] };
-      const existing = existingRes.rows[0];
+      const existingRes = set_id
+        ? await query('SELECT * FROM logged_sets WHERE id = $1 AND logged_exercise_id = $2', [set_id, req.params.exId])
+        : program_set_id
+          ? await query('SELECT * FROM logged_sets WHERE logged_exercise_id = $1 AND program_set_id = $2 LIMIT 1', [req.params.exId, program_set_id])
+          : { rows: [] };
+      let existing = existingRes.rows[0];
+
+      if (existing && existing.set_type !== 'backdown') {
+        return res.status(400).json({ error: 'set_type mismatch: set belongs to a different type' });
+      }
 
       if (existing) {
         await query(
@@ -379,41 +400,30 @@ router.post('/exercises/:exId/sets', async (req, res) => {
           [reps, load_kg, actual_rpe || null, athlete_notes || null, existing.id]
         );
       } else {
-        await query(
-          "INSERT INTO logged_sets (logged_exercise_id, program_set_id, set_order, set_type, reps, load_kg, actual_rpe, target_rpe, athlete_notes) VALUES ($1,$2,$3,'backdown',$4,$5,$6,$7,$8)",
-          [req.params.exId, program_set_id || null, set_order || 0, reps, load_kg, actual_rpe || null, target_rpe || null, athlete_notes || null]
+        // Fallback: look for an unlogged backdown at this set_order before inserting
+        const fallbackRes = await query(
+          "SELECT * FROM logged_sets WHERE logged_exercise_id = $1 AND set_type = 'backdown' AND set_order = $2 AND actual_rpe IS NULL ORDER BY id LIMIT 1",
+          [req.params.exId, set_order || 0]
         );
-      }
-
-      if (actual_rpe && load_kg && reps) {
-        const newE1rm = calcE1RM(load_kg, reps, actual_rpe);
-        if (newE1rm) {
-          const currentSet = existing || (await query(
-            "SELECT * FROM logged_sets WHERE logged_exercise_id = $1 AND set_type = 'backdown' ORDER BY id DESC LIMIT 1",
-            [req.params.exId]
-          )).rows[0];
-
-          if (currentSet) {
-            const nextRes = await query(
-              "SELECT * FROM logged_sets WHERE logged_exercise_id = $1 AND set_type = 'backdown' AND set_order > $2 ORDER BY set_order LIMIT 1",
-              [req.params.exId, currentSet.set_order]
-            );
-            const nextBackdown = nextRes.rows[0];
-            if (nextBackdown && nextBackdown.target_rpe) {
-              const newLoad = calcBackdownLoad(newE1rm, nextBackdown.reps, nextBackdown.target_rpe);
-              await query(
-                'UPDATE logged_sets SET calculated_load_kg=$1, load_kg=$2, intensity_pct=$3 WHERE id=$4',
-                [newLoad, newLoad, calcIntensityPct(newLoad, newE1rm), nextBackdown.id]
-              );
-            }
-          }
+        if (fallbackRes.rows[0]) {
+          existing = fallbackRes.rows[0];
+          await query(
+            'UPDATE logged_sets SET reps=$1, load_kg=$2, actual_rpe=$3, athlete_notes=$4 WHERE id=$5',
+            [reps, load_kg, actual_rpe || null, athlete_notes || null, existing.id]
+          );
+        } else {
+          await query(
+            "INSERT INTO logged_sets (logged_exercise_id, program_set_id, set_order, set_type, reps, load_kg, actual_rpe, target_rpe, athlete_notes) VALUES ($1,$2,$3,'backdown',$4,$5,$6,$7,$8)",
+            [req.params.exId, program_set_id || null, set_order || 0, reps, load_kg, actual_rpe || null, target_rpe || null, athlete_notes || null]
+          );
         }
       }
+
     }
 
     const exRes = await query('SELECT * FROM logged_exercises WHERE id = $1', [req.params.exId]);
     const ex = exRes.rows[0];
-    const setsRes = await query('SELECT * FROM logged_sets WHERE logged_exercise_id = $1 ORDER BY set_order', [req.params.exId]);
+    const setsRes = await query('SELECT * FROM logged_sets WHERE logged_exercise_id = $1 ORDER BY set_order, id', [req.params.exId]);
     ex.sets = setsRes.rows;
     res.json(ex);
   } catch (err) {
@@ -438,28 +448,6 @@ router.put('/sets/:setId', async (req, res) => {
     const updatedRes = await query('SELECT * FROM logged_sets WHERE id = $1', [req.params.setId]);
     const updatedSet = updatedRes.rows[0];
 
-    if (actual_rpe && updatedSet.set_type === 'backdown') {
-      const effectiveLoad = load_kg || updatedSet.load_kg;
-      const effectiveReps = reps || updatedSet.reps;
-      if (effectiveLoad && effectiveReps) {
-        const newE1rm = calcE1RM(effectiveLoad, effectiveReps, actual_rpe);
-        if (newE1rm) {
-          const nextRes = await query(
-            "SELECT * FROM logged_sets WHERE logged_exercise_id = $1 AND set_type = 'backdown' AND set_order > $2 ORDER BY set_order LIMIT 1",
-            [updatedSet.logged_exercise_id, updatedSet.set_order]
-          );
-          const nextBackdown = nextRes.rows[0];
-          if (nextBackdown && nextBackdown.target_rpe) {
-            const newLoad = calcBackdownLoad(newE1rm, nextBackdown.reps, nextBackdown.target_rpe);
-            await query(
-              'UPDATE logged_sets SET calculated_load_kg=$1, load_kg=$2, intensity_pct=$3 WHERE id=$4',
-              [newLoad, newLoad, calcIntensityPct(newLoad, newE1rm), nextBackdown.id]
-            );
-          }
-        }
-      }
-    }
-
     if (updatedSet.set_type === 'top') {
       const effectiveLoad = load_kg || updatedSet.load_kg;
       const effectiveReps = reps || updatedSet.reps;
@@ -468,14 +456,14 @@ router.put('/sets/:setId', async (req, res) => {
         const e1rm = calcE1RM(effectiveLoad, effectiveReps, effectiveRpe);
         if (e1rm) {
           const bdRes = await query(
-            "SELECT * FROM logged_sets WHERE logged_exercise_id = $1 AND set_type = 'backdown' ORDER BY set_order",
+            "SELECT * FROM logged_sets WHERE logged_exercise_id = $1 AND set_type = 'backdown' ORDER BY set_order, id",
             [updatedSet.logged_exercise_id]
           );
           for (const bd of bdRes.rows) {
             if (bd.target_rpe && bd.reps) {
               const calcLoad = calcBackdownLoad(e1rm, bd.reps, bd.target_rpe);
               await query(
-                'UPDATE logged_sets SET calculated_load_kg=$1, load_kg=$2, intensity_pct=$3 WHERE id=$4',
+                'UPDATE logged_sets SET calculated_load_kg=$1, load_kg=CASE WHEN actual_rpe IS NULL THEN $2 ELSE load_kg END, intensity_pct=$3 WHERE id=$4',
                 [calcLoad, calcLoad, calcIntensityPct(calcLoad, e1rm), bd.id]
               );
             }
@@ -486,7 +474,7 @@ router.put('/sets/:setId', async (req, res) => {
 
     const exRes = await query('SELECT * FROM logged_exercises WHERE id = $1', [updatedSet.logged_exercise_id]);
     const ex = exRes.rows[0];
-    const setsRes = await query('SELECT * FROM logged_sets WHERE logged_exercise_id = $1 ORDER BY set_order', [ex.id]);
+    const setsRes = await query('SELECT * FROM logged_sets WHERE logged_exercise_id = $1 ORDER BY set_order, id', [ex.id]);
     ex.sets = setsRes.rows;
     res.json(ex);
   } catch (err) {
@@ -502,13 +490,13 @@ router.post('/sets/:setId/unlog', async (req, res) => {
     if (!set) return res.status(404).json({ error: 'Set not found' });
 
     await query(
-      'UPDATE logged_sets SET actual_rpe = NULL, load_kg = COALESCE(calculated_load_kg, load_kg), athlete_notes = NULL WHERE id = $1',
+      'UPDATE logged_sets SET actual_rpe = NULL, athlete_notes = NULL WHERE id = $1',
       [req.params.setId]
     );
 
     const exRes = await query('SELECT * FROM logged_exercises WHERE id = $1', [set.logged_exercise_id]);
     const ex = exRes.rows[0];
-    const setsRes = await query('SELECT * FROM logged_sets WHERE logged_exercise_id = $1 ORDER BY set_order', [ex.id]);
+    const setsRes = await query('SELECT * FROM logged_sets WHERE logged_exercise_id = $1 ORDER BY set_order, id', [ex.id]);
     ex.sets = setsRes.rows;
     res.json(ex);
   } catch (err) {

@@ -1,7 +1,7 @@
 import { toast, navigate } from '../app.js';
 import { sessionAPI } from '../api.js';
-import { renderQuestionnaire, attachQuestionnaireListeners } from '../components/questionnaire.js';
-import { renderSetRow, renderSetTableHeader, attachSetRowListeners, readSetRowValues } from '../components/setRow.js';
+import { renderQuestionnaire, attachQuestionnaireListeners } from '../components/questionnaire.js?v=2';
+import { renderSetRow, renderSetTableHeader, attachSetRowListeners, readSetRowValues } from '../components/setRow.js?v=4';
 import { calcE1RM, calcBackdownLoad, calcIntensityPct } from '../rpe.js';
 import { showHistoryModal } from '../components/exerciseHistory.js';
 
@@ -111,12 +111,10 @@ export async function renderSessionLog(app, sessionId) {
       <div class="exercise-block" id="ex-${ex.id}">
         <div class="exercise-header">
           <div class="exercise-name">${ex.exercise_name}</div>
-          <button class="exercise-history-btn btn btn-sm" data-ex-id="${ex.id}">📋 History</button>
+          <button class="exercise-history-btn" data-ex-id="${ex.id}">📋 History</button>
           ${hint ? `
             <div class="last-load-hint" data-ex-id="${ex.id}" data-load="${hint.load_kg}" data-rpe="${hint.actual_rpe ?? ''}">
-              <span class="last-load-text">Last: ${hint.load_kg}kg${hint.actual_rpe ? ' @ RPE ' + hint.actual_rpe : ''}</span>
-              <span class="last-load-date">${formatDate(hint.session_date)}</span>
-              <button class="last-load-fill-btn btn btn-sm" type="button">Use ↵</button>
+              <button class="last-load-fill-btn btn btn-sm" type="button">Copy last session</button>
             </div>` : ''}
         </div>
         <div class="sets-table">
@@ -309,11 +307,9 @@ export async function renderSessionLog(app, sessionId) {
     document.getElementById('session-progress-mount').innerHTML = renderProgressBar();
     if (prevRpe == null) dbSet.actual_rpe = null;
 
-    // Advance to next set immediately — don't wait for server
-    autoAdvance(ex.id, setId);
-
     try {
       const updatedEx = await sessionAPI.logSet(ex.id, {
+        set_id:         dbSet.id,
         set_type:       dbSet.set_type,
         reps,
         load_kg,
@@ -333,6 +329,7 @@ export async function renderSessionLog(app, sessionId) {
       exEl.replaceWith(newDiv.firstElementChild);
       attachExerciseListeners(updatedEx);
       document.getElementById('session-progress-mount').innerHTML = renderProgressBar();
+      autoAdvance(ex.id, setId);
 
     } catch (err) {
       toast(err.message, 'error');
