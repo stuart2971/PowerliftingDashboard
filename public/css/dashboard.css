@@ -66,9 +66,48 @@
   color: var(--text-muted);
 }
 
+.hamburger-btn {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  cursor: pointer;
+  color: var(--text-primary);
+  padding: 4px 8px;
+  line-height: 1;
+}
+
+.mobile-menu {
+  display: none;
+  position: fixed;
+  top: 60px;
+  left: 0;
+  right: 0;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  z-index: 99;
+  flex-direction: column;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.mobile-menu.open { display: flex; }
+
+.mobile-nav-link {
+  padding: 14px 20px;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  border-bottom: 1px solid var(--border);
+}
+
+.mobile-nav-link:last-child { border-bottom: none; }
+.mobile-nav-link.active { color: var(--text-primary); font-weight: 500; }
+
 @media (max-width: 600px) {
   .navbar-links { display: none; }
   .navbar-brand { font-size: 1.2rem; }
+  .hamburger-btn { display: block; }
 }
 
 /* ── Login Page ───────────────────────────────────────────────── */
@@ -612,6 +651,8 @@
 @media (max-width: 480px) {
   .set-row { gap: 10px; padding: 12px; }
   .reps-adj-btn, .load-adj-btn, .rpe-adj-btn { width: 26px; height: 26px; font-size: 0.9rem; }
+  .reps-input, .load-input, .rpe-input { width: 36px; font-size: 0.95rem; }
+  .reps-control, .load-control, .rpe-control { gap: 4px; }
 }
 
 /* ── Athlete Profile ──────────────────────────────────────────── */
@@ -659,6 +700,9 @@
   text-transform: uppercase;
   color: var(--text-primary);
   padding: 8px 0;
+  overflow-wrap: break-word;
+  word-break: break-all;
+  min-width: 0;
 }
 
 .pb-table thead th { text-align: center; }
