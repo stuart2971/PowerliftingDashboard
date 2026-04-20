@@ -1,4 +1,4 @@
-const CACHE_NAME = 'g5-pl-v9';
+const CACHE_NAME = 'g5-pl-v11';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

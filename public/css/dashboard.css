@@ -108,6 +108,7 @@
   .navbar-links { display: none; }
   .navbar-brand { font-size: 1.2rem; }
   .hamburger-btn { display: block; }
+  .navbar-user { display: none; }
 }
 
 /* ── Login Page ───────────────────────────────────────────────── */
