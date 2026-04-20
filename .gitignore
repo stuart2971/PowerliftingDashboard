@@ -6,3 +6,4 @@ database/app.db-wal
 
 .vercel
 .gstack/
+.claude/settings.local.json
