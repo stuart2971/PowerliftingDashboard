@@ -81,7 +81,7 @@ async function seed() {
   // ── Week 1 ───────────────────────────────────────────────────
   const w1Res = await query(
     'INSERT INTO program_weeks (program_id, week_number, label) VALUES ($1,$2,$3) RETURNING id',
-    [progId, 1, 'Week 1 — Intro']
+    [progId, 1, 'Intro']
   );
   const w1 = w1Res.rows[0].id;
 
@@ -214,7 +214,7 @@ async function seed() {
   // ── Week 2 ───────────────────────────────────────────────────
   const w2Res = await query(
     'INSERT INTO program_weeks (program_id, week_number, label) VALUES ($1,$2,$3) RETURNING id',
-    [progId, 2, 'Week 2 — Build']
+    [progId, 2, 'Build']
   );
   const w2 = w2Res.rows[0].id;
 
