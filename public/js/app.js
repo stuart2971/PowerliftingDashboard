@@ -197,5 +197,6 @@ router();
 
 // Keep Vercel serverless function warm — ping every 4 min to prevent cold starts
 setInterval(() => {
-  if (getUser()) fetch('/api/auth/me').catch(() => {});
+  const token = localStorage.getItem('token');
+  if (getUser() && token) fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
 }, 4 * 60 * 1000);
