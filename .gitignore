@@ -5,3 +5,4 @@ database/app.db-shm
 database/app.db-wal
 
 .vercel
+.gstack/
