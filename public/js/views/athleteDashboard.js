@@ -51,44 +51,44 @@ export async function renderAthleteDashboard(app) {
     }
   }
 
-  // Sessions indexed by program_day_id
+  // Sessions come back DESC (newest first). Keep only the most recent per day.
   const sessionByDayId = {};
   for (const s of sessions) {
-    if (s.program_day_id) sessionByDayId[s.program_day_id] = s;
+    if (s.program_day_id && !sessionByDayId[s.program_day_id]) {
+      sessionByDayId[s.program_day_id] = s;
+    }
   }
 
-  // Find today's active session or next upcoming day
-  const todaySession = sessions.find(s => s.session_date === today && s.program_day_id);
+  // Check if all days in program are truly completed (completed_at set)
+  const allDays = (fullProgram.weeks || []).flatMap(w => w.days || []);
+  const programComplete = allDays.length > 0 && allDays.every(d => {
+    const s = sessionByDayId[d.id];
+    return !!(s && s.completed_at);
+  });
+
+  // Find the first day that isn't fully completed — that's the current/upcoming day
   let currentWeek = null;
   let upcomingDay = null;
   let upcomingDaySession = null;
 
-  if (todaySession) {
-    const ref = dayMap[todaySession.program_day_id];
-    currentWeek = ref?.week;
-    upcomingDay = ref?.day;
-    upcomingDaySession = todaySession;
-  } else {
-    const lastSession = sessions.filter(s => s.program_day_id).slice(-1)[0];
-    let foundLast = !lastSession;
-    outer: for (const w of (fullProgram.weeks || [])) {
-      for (const d of (w.days || [])) {
-        if (foundLast && !sessionByDayId[d.id]) {
-          currentWeek = w;
-          upcomingDay = d;
-          break outer;
-        }
-        if (lastSession && d.id === lastSession.program_day_id) foundLast = true;
+  outer: for (const w of (fullProgram.weeks || [])) {
+    for (const d of (w.days || [])) {
+      const s = sessionByDayId[d.id];
+      if (!s || !s.completed_at) {
+        currentWeek = w;
+        upcomingDay = d;
+        upcomingDaySession = s || null; // null = not started, session obj = in progress
+        break outer;
       }
     }
   }
 
-  const dayLabel = upcomingDay
-    ? `Day ${upcomingDay.day_number}${upcomingDay.label ? ' — ' + upcomingDay.label : ''}`
-    : null;
-  const weekLabel = currentWeek
-    ? `Week ${currentWeek.week_number}${currentWeek.label ? ' — ' + currentWeek.label : ''}`
-    : null;
+  const weekNum = currentWeek?.week_number;
+  const dayNum  = upcomingDay?.day_number;
+  const pageTitle = (weekNum && dayNum)
+    ? `Week ${weekNum} · Day ${dayNum}`
+    : fullProgram.name;
+
   const avgDurStr = avgDuration?.avg_minutes
     ? `${Math.floor(avgDuration.avg_minutes / 60)}h ${avgDuration.avg_minutes % 60}m`
     : null;
@@ -97,75 +97,111 @@ export async function renderAthleteDashboard(app) {
     <div class="page">
       <div class="page-header">
         <div class="page-header-left">
-          <h1 class="page-title">${fullProgram.name}</h1>
+          <h1 class="page-title">${pageTitle}</h1>
           <div class="page-subtitle">${profile?.name ?? ''}${profile?.weight_class ? ' · ' + profile.weight_class + 'kg' : ''}${profile?.division ? ' · ' + profile.division : ''}</div>
         </div>
         ${weeksOut != null ? `<div class="stat-chip"><div class="stat-chip-value">${weeksOut}</div><div class="stat-chip-label">Weeks Out</div></div>` : ''}
       </div>
 
-      <!-- Lift analytics buttons -->
-      <div class="lift-analytics-row">
-        ${['squat','bench','deadlift'].map(lift => `
-          <button class="btn btn-secondary lift-analytics-btn" onclick="window.location.hash='#/my/exercise/${lift}'">
-            ${lift.charAt(0).toUpperCase() + lift.slice(1)} ↗
-          </button>
-        `).join('')}
-      </div>
-
-      ${upcomingDay ? `
+      ${programComplete ? `
+      <div class="program-complete-card">
+        <div class="program-complete-icon">🏆</div>
+        <div class="program-complete-title">Program Complete!</div>
+        <div class="program-complete-body">${fullProgram.name} — all sessions logged. Great work.</div>
+      </div>` : upcomingDay ? `
       <div class="today-card">
         <div class="today-card-header">
           <div>
-            <div class="today-card-label">${upcomingDaySession || todaySession ? "Today's Session" : 'Next Up'}</div>
-            <div class="today-card-title">${weekLabel} · ${dayLabel}</div>
+            <div class="today-card-label">${upcomingDaySession ? (upcomingDaySession.session_date === today ? "Today's Session" : 'In Progress') : 'Next Up'}</div>
+            <div class="today-card-title">${upcomingDay.label ? upcomingDay.label : (currentWeek?.label || '')}</div>
           </div>
-          <div class="today-card-actions">
-            ${avgDurStr ? `<div class="today-avg-time">⏱ avg ${avgDurStr}</div>` : ''}
-            ${todaySession
-              ? `<button class="btn btn-primary today-go-btn" data-session-id="${todaySession.id}">Continue →</button>`
-              : `<button class="btn btn-primary today-go-btn" data-day-id="${upcomingDay.id}">Start →</button>`
-            }
-          </div>
+          ${avgDurStr ? `<div class="today-avg-time">⏱ avg ${avgDurStr}</div>` : ''}
         </div>
 
         <div class="today-exercises">
           ${upcomingDay.exercises?.map(ex => `
             <div class="today-exercise-row">
-              <div class="today-exercise-main">
-                <span class="today-exercise-name">${ex.name}</span>
-              </div>
+              <span class="today-exercise-name">${ex.name}</span>
             </div>`
           ).join('') || '<div style="padding:8px 0;color:var(--text-muted)">No exercises</div>'}
         </div>
 
+        <div class="today-card-footer">
+          ${upcomingDaySession
+            ? `<button class="btn btn-primary btn-lg btn-block today-go-btn" data-session-id="${upcomingDaySession.id}">Continue Session →</button>`
+            : `<button class="btn btn-primary btn-lg btn-block today-go-btn" data-day-id="${upcomingDay.id}">Start Session →</button>`
+          }
+        </div>
       </div>` : ''}
 
-      <div class="section" style="margin-top:24px">
-        <div class="section-header">
-          <span class="section-title">Program Weeks</span>
+      <!-- Lift Analytics (collapsed by default) -->
+      <div class="section" style="margin-top:16px">
+        <div class="section-header collapse-toggle" id="analytics-toggle" style="cursor:pointer">
+          <span class="section-title">Lift Analytics</span>
+          <span class="collapse-arrow">▾</span>
         </div>
-        <div class="section-body" style="padding:4px 0">
-          ${fullProgram.weeks?.length ? fullProgram.weeks.map(w => {
-            const isCurrent = currentWeek?.id === w.id;
-            const completedDays = w.days?.filter(d => sessionByDayId[d.id]).length || 0;
-            const totalDays = w.days?.length || 0;
-            return `
-              <div class="week-nav-row${isCurrent ? ' current' : ''}" data-week-id="${w.id}">
-                <div class="week-nav-info">
-                  <span class="week-nav-label">Week ${w.week_number}${w.label ? ' — ' + w.label : ''}</span>
-                  <span class="week-nav-progress">${completedDays} / ${totalDays} days logged</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:8px">
-                  ${isCurrent ? '<span class="badge badge-accent">Current</span>' : ''}
-                  ${completedDays === totalDays && totalDays > 0 ? '<span class="badge badge-muted">Complete</span>' : ''}
-                  <span class="week-nav-arrow">›</span>
-                </div>
-              </div>`;
-          }).join('') : '<div style="padding:16px;color:var(--text-muted)">No weeks in this program</div>'}
+        <div class="collapse-content" id="analytics-content">
+          <div class="lift-analytics-row" style="padding:8px 0 4px">
+            ${['squat','bench','deadlift'].map(lift => `
+              <button class="btn btn-secondary lift-analytics-btn" data-lift="${lift}">
+                ${lift.charAt(0).toUpperCase() + lift.slice(1)} ↗
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- Program Weeks (collapsed by default) -->
+      <div class="section" style="margin-top:8px">
+        <div class="section-header collapse-toggle" id="weeks-toggle" style="cursor:pointer">
+          <span class="section-title">Program Weeks</span>
+          <span class="collapse-arrow">▾</span>
+        </div>
+        <div class="collapse-content" id="weeks-content">
+          <div class="section-body" style="padding:4px 0">
+            ${fullProgram.weeks?.length ? fullProgram.weeks.map(w => {
+              const isCurrent = currentWeek?.id === w.id;
+              const completedDays = w.days?.filter(d => {
+                const s = sessionByDayId[d.id];
+                return !!(s && s.completed_at);
+              }).length || 0;
+              const totalDays = w.days?.length || 0;
+              return `
+                <div class="week-nav-row${isCurrent ? ' current' : ''}" data-week-id="${w.id}">
+                  <div class="week-nav-info">
+                    <span class="week-nav-label">Week ${w.week_number}${w.label ? ' — ' + w.label : ''}</span>
+                    <span class="week-nav-progress">${completedDays} / ${totalDays} days logged</span>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    ${isCurrent ? '<span class="badge badge-accent">Current</span>' : ''}
+                    ${completedDays === totalDays && totalDays > 0 ? '<span class="badge badge-muted">Complete</span>' : ''}
+                    <span class="week-nav-arrow">›</span>
+                  </div>
+                </div>`;
+            }).join('') : '<div style="padding:16px;color:var(--text-muted)">No weeks in this program</div>'}
+          </div>
         </div>
       </div>
     </div>`;
 
+  // Collapse toggles
+  ['analytics', 'weeks'].forEach(name => {
+    const toggle  = document.getElementById(`${name}-toggle`);
+    const content = document.getElementById(`${name}-content`);
+    if (!toggle || !content) return;
+    toggle.addEventListener('click', () => {
+      const isOpen = content.classList.toggle('open');
+      const arrow = toggle.querySelector('.collapse-arrow');
+      if (arrow) arrow.textContent = isOpen ? '▴' : '▾';
+    });
+  });
+
+  // Lift analytics buttons
+  app.querySelectorAll('.lift-analytics-btn').forEach(btn => {
+    btn.addEventListener('click', () => navigate(`/my/exercise/${btn.dataset.lift}`));
+  });
+
+  // Today card start / continue
   app.querySelector('.today-go-btn')?.addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     if (btn.dataset.sessionId) {
@@ -179,11 +215,12 @@ export async function renderAthleteDashboard(app) {
       } catch (err) {
         toast(err.message, 'error');
         btn.disabled = false;
-        btn.textContent = 'Start →';
+        btn.textContent = 'Start Session →';
       }
     }
   });
 
+  // Week nav rows
   app.querySelectorAll('.week-nav-row').forEach(row => {
     row.addEventListener('click', () => navigate(`/training/week/${row.dataset.weekId}`));
   });

@@ -90,5 +90,6 @@ export const sessionAPI = {
   lastLoad:     (exerciseName)   => apiFetch(`/api/sessions/last-load?exerciseName=${encodeURIComponent(exerciseName)}`),
   unlogSet:     (setId)          => apiFetch(`/api/sessions/sets/${setId}/unlog`, { method: 'POST' }),
   exerciseHistory: (exerciseName) => apiFetch(`/api/sessions/exercise-history?exerciseName=${encodeURIComponent(exerciseName)}`),
-  avgDuration:     (dayOfWeek)    => apiFetch(`/api/sessions/avg-duration?dayOfWeek=${dayOfWeek}`)
+  avgDuration:     (dayOfWeek)    => apiFetch(`/api/sessions/avg-duration?dayOfWeek=${dayOfWeek}`),
+  complete:        (id)           => apiFetch(`/api/sessions/${id}/complete`, { method: 'POST' })
 };

@@ -2,10 +2,9 @@ import { toast } from '../app.js';
 import { athleteAPI, sessionAPI, programAPI } from '../api.js';
 
 export async function renderAthleteDetail(app, athleteId) {
-  const [profile, pbs, sessions, programs] = await Promise.all([
+  const [profile, pbs, programs] = await Promise.all([
     athleteAPI.get(athleteId),
     athleteAPI.pbs(athleteId),
-    sessionAPI.list(`?athleteId=${athleteId}`),
     programAPI.list()
   ]);
 
@@ -73,24 +72,12 @@ export async function renderAthleteDetail(app, athleteId) {
         </div>
 
         <div class="section">
-          <div class="section-header"><span class="section-title">Recent Sessions</span></div>
-          <div class="section-body" style="padding:0">
-            ${sessions.length
-              ? `<div class="table-wrap"><table>
-                  <thead><tr><th>Date</th><th>Readiness</th><th>Sets</th><th></th></tr></thead>
-                  <tbody>
-                    ${sessions.slice(0, 10).map(s => `
-                      <tr>
-                        <td>${s.session_date}</td>
-                        <td>${s.readiness ? `<span class="badge badge-${s.readiness === 'Great' ? 'accent' : s.readiness === 'Good' ? 'info' : 'warning'}">${s.readiness}</span>` : '—'}</td>
-                        <td>${s.athlete_name || ''}</td>
-                        <td><button class="btn btn-ghost btn-sm" onclick="window.location.hash='#/session/${s.id}'">View</button></td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table></div>`
-              : '<div class="empty-state" style="padding:32px"><div class="empty-state-text">No sessions logged yet</div></div>'
-            }
+          <div class="section-header" style="display:flex;align-items:center;justify-content:space-between">
+            <span class="section-title">Recent Sessions</span>
+            <button class="btn btn-secondary btn-sm" id="refresh-sessions-btn">↻ Refresh</button>
+          </div>
+          <div class="section-body" style="padding:0" id="sessions-table-wrap">
+            <div class="loading-inline">Loading…</div>
           </div>
         </div>
       </div>
@@ -101,4 +88,61 @@ export async function renderAthleteDetail(app, athleteId) {
       window.location.hash = `#/coach/athlete/${athleteId}/exercise/${btn.dataset.lift}`;
     });
   });
+
+  // ── Sessions: fetch fresh and re-render ──────────────────────
+  async function loadSessions() {
+    const wrap = document.getElementById('sessions-table-wrap');
+    const btn  = document.getElementById('refresh-sessions-btn');
+    if (!wrap) return;
+    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+    try {
+      const sessions = await sessionAPI.list(`?athleteId=${athleteId}`);
+      renderSessionsTable(wrap, sessions);
+    } catch (err) {
+      wrap.innerHTML = `<div class="empty-state" style="padding:24px"><div class="empty-state-text">Failed to load sessions</div></div>`;
+      toast('Could not load sessions', 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '↻ Refresh'; }
+    }
+  }
+
+  function renderSessionsTable(wrap, sessions) {
+    if (!sessions.length) {
+      wrap.innerHTML = '<div class="empty-state" style="padding:32px"><div class="empty-state-text">No sessions logged yet</div></div>';
+      return;
+    }
+    wrap.innerHTML = `
+      <div class="table-wrap"><table>
+        <thead><tr><th>Date</th><th>Status</th><th>Readiness</th><th></th></tr></thead>
+        <tbody>
+          ${sessions.slice(0, 15).map(s => {
+            const done = !!s.completed_at;
+            const statusBadge = done
+              ? '<span class="badge badge-accent">Done</span>'
+              : '<span class="badge badge-muted">In Progress</span>';
+            const readiness = s.readiness
+              ? `<span class="badge badge-${s.readiness === 'Great' ? 'accent' : s.readiness === 'Good' ? 'info' : 'warning'}">${s.readiness}</span>`
+              : '—';
+            return `<tr>
+              <td>${s.session_date}</td>
+              <td>${statusBadge}</td>
+              <td>${readiness}</td>
+              <td><button class="btn btn-ghost btn-sm" onclick="window.location.hash='#/session/${s.id}'">View</button></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table></div>`;
+  }
+
+  document.getElementById('refresh-sessions-btn')?.addEventListener('click', loadSessions);
+
+  // Auto-refresh when page becomes visible again (athlete may have just finished)
+  const onVisible = () => { if (!document.hidden) loadSessions(); };
+  document.addEventListener('visibilitychange', onVisible);
+  // Clean up listener when user navigates away (hash change)
+  window.addEventListener('hashchange', () => {
+    document.removeEventListener('visibilitychange', onVisible);
+  }, { once: true });
+
+  loadSessions();
 }

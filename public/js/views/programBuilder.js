@@ -632,8 +632,8 @@ export async function renderProgramBuilder(app, programId) {
       <div class="form-group">
         <label class="form-label">Target RPE</label>
         <div class="rpe-picker rpe-picker-modal">
-          ${[5,5.5,6,6.5,7,7.5,8,8.5,9,9.5,10].map(r => `
-            <button type="button" class="rpe-btn ${r <= 7 ? 'rpe-btn-low' : r <= 8.5 ? 'rpe-btn-med' : 'rpe-btn-high'} ${existingSet?.target_rpe === r ? 'selected' : ''}" data-rpe="${r}">${r}</button>
+          ${[0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6,6.5,7,7.5,8,8.5,9,9.5,10].map(r => `
+            <button type="button" class="rpe-btn ${r <= 6 ? 'rpe-btn-low' : r <= 8 ? 'rpe-btn-med' : 'rpe-btn-high'} ${existingSet?.target_rpe === r ? 'selected' : ''}" data-rpe="${r}">${r}</button>
           `).join('')}
           <input type="hidden" id="set-rpe-hidden" value="${existingSet?.target_rpe ?? ''}">
         </div>

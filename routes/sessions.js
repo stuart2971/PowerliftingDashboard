@@ -12,20 +12,31 @@ async function getFullSession(sessionId) {
   const session = sessionRes.rows[0];
   if (!session) return null;
 
-  // Sync any program exercises added to the day after this session was created
+  // ── Deep sync: keep session in lockstep with the current program ─
+  // Runs every time a session is fetched so coach edits are always reflected.
+  // Safety rule: never overwrite data the athlete has already logged
+  // (actual_rpe IS NOT NULL means the set is done — leave it alone).
   if (session.program_day_id) {
+    // Current program state for this day
     const progExRes = await query(
       'SELECT * FROM program_exercises WHERE day_id = $1 ORDER BY exercise_order',
       [session.program_day_id]
     );
+    const currentPeIds = new Set(progExRes.rows.map(r => r.id));
+
+    // All logged_exercises for this session that are tied to the program
     const existingLeRes = await query(
-      'SELECT program_exercise_id FROM logged_exercises WHERE session_id = $1 AND program_exercise_id IS NOT NULL',
+      'SELECT * FROM logged_exercises WHERE session_id = $1 AND program_exercise_id IS NOT NULL',
       [sessionId]
     );
-    const existingPeIds = new Set(existingLeRes.rows.map(r => r.program_exercise_id));
+    const leByPeId = {};
+    for (const le of existingLeRes.rows) leByPeId[le.program_exercise_id] = le;
 
+    // ── 1. Add new exercises / update name+order of existing ones ──
     for (const pe of progExRes.rows) {
-      if (!existingPeIds.has(pe.id)) {
+      const le = leByPeId[pe.id];
+      if (!le) {
+        // Coach added an exercise after session was started — insert it
         const leResult = await query(
           'INSERT INTO logged_exercises (session_id, program_exercise_id, exercise_name, exercise_order) VALUES ($1,$2,$3,$4) RETURNING id',
           [sessionId, pe.id, pe.name, pe.exercise_order]
@@ -41,20 +52,81 @@ async function getFullSession(sessionId) {
             [leId, s.id, s.set_order, s.set_type, s.reps, s.target_rpe]
           );
         }
+      } else {
+        // Exercise exists — update name/order if coach changed them
+        if (le.exercise_name !== pe.name || le.exercise_order !== pe.exercise_order) {
+          await query(
+            'UPDATE logged_exercises SET exercise_name=$1, exercise_order=$2 WHERE id=$3',
+            [pe.name, pe.exercise_order, le.id]
+          );
+        }
+
+        // ── 2. Sync sets for this exercise ──────────────────────────
+        const progSetsRes = await query(
+          'SELECT * FROM program_sets WHERE exercise_id = $1 ORDER BY set_order',
+          [pe.id]
+        );
+        const currentPsIds = new Set(progSetsRes.rows.map(r => r.id));
+
+        const loggedSetsRes = await query(
+          'SELECT * FROM logged_sets WHERE logged_exercise_id = $1 ORDER BY set_order, id',
+          [le.id]
+        );
+        const lsByPsId = {};
+        for (const ls of loggedSetsRes.rows) {
+          if (ls.program_set_id) lsByPsId[ls.program_set_id] = ls;
+        }
+
+        for (const ps of progSetsRes.rows) {
+          const ls = lsByPsId[ps.id];
+          if (!ls) {
+            // New set added by coach — insert it
+            await query(
+              'INSERT INTO logged_sets (logged_exercise_id, program_set_id, set_order, set_type, reps, target_rpe) VALUES ($1,$2,$3,$4,$5,$6)',
+              [le.id, ps.id, ps.set_order, ps.set_type, ps.reps, ps.target_rpe]
+            );
+          } else if (ls.actual_rpe == null) {
+            // Set not yet logged — safe to update with coach's changes
+            if (
+              ls.set_order   !== ps.set_order   ||
+              ls.set_type    !== ps.set_type     ||
+              ls.reps        !== ps.reps         ||
+              String(ls.target_rpe) !== String(ps.target_rpe)
+            ) {
+              await query(
+                'UPDATE logged_sets SET set_order=$1, set_type=$2, reps=$3, target_rpe=$4 WHERE id=$5',
+                [ps.set_order, ps.set_type, ps.reps, ps.target_rpe, ls.id]
+              );
+            }
+          }
+          // actual_rpe IS NOT NULL → athlete already logged it, never touch it
+        }
+
+        // Remove unlogged sets for program_sets the coach deleted
+        for (const ls of loggedSetsRes.rows) {
+          if (ls.program_set_id && !currentPsIds.has(ls.program_set_id) && ls.actual_rpe == null) {
+            await query('DELETE FROM logged_sets WHERE id = $1', [ls.id]);
+          }
+        }
       }
     }
 
-    // Clean up orphaned exercises (program exercise was deleted/replaced after session was started).
-    // Only removes exercises with no actual logged data — preserves real workout history.
-    await query(`
-      DELETE FROM logged_exercises
-      WHERE session_id = $1
-        AND program_exercise_id IS NULL
-        AND id NOT IN (
-          SELECT logged_exercise_id FROM logged_sets
-          WHERE load_kg IS NOT NULL OR actual_rpe IS NOT NULL
-        )
-    `, [sessionId]);
+    // ── 3. Remove exercises the coach deleted from the program ──────
+    // Only if the athlete hasn't logged any data for them yet
+    for (const le of existingLeRes.rows) {
+      if (!currentPeIds.has(le.program_exercise_id)) {
+        const orphanSets = await query(
+          'SELECT id, actual_rpe, load_kg FROM logged_sets WHERE logged_exercise_id = $1',
+          [le.id]
+        );
+        const hasRealData = orphanSets.rows.some(s => s.actual_rpe != null || s.load_kg != null);
+        if (!hasRealData) {
+          await query('DELETE FROM logged_sets WHERE logged_exercise_id = $1', [le.id]);
+          await query('DELETE FROM logged_exercises WHERE id = $1', [le.id]);
+        }
+        // If athlete already logged data for this exercise, leave it as historical record
+      }
+    }
   }
 
   const exRes = await query(
@@ -69,23 +141,8 @@ async function getFullSession(sessionId) {
       [ex.id]
     );
     ex.sets = setRes.rows;
-
-    // Lazy-sync: if exercise has no logged sets but is linked to a program exercise,
-    // copy the current program sets in (handles sets added to program after session creation)
-    if (ex.sets.length === 0 && ex.program_exercise_id) {
-      const progSets = await query(
-        'SELECT * FROM program_sets WHERE exercise_id = $1 ORDER BY set_order',
-        [ex.program_exercise_id]
-      );
-      for (const s of progSets.rows) {
-        const inserted = await query(
-          'INSERT INTO logged_sets (logged_exercise_id, program_set_id, set_order, set_type, reps, target_rpe) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
-          [ex.id, s.id, s.set_order, s.set_type, s.reps, s.target_rpe]
-        );
-        ex.sets.push(inserted.rows[0]);
-      }
-    }
   }
+
   session.exercises = exercises;
   return session;
 }
@@ -477,6 +534,19 @@ router.put('/sets/:setId', async (req, res) => {
     const setsRes = await query('SELECT * FROM logged_sets WHERE logged_exercise_id = $1 ORDER BY set_order, id', [ex.id]);
     ex.sets = setsRes.rows;
     res.json(ex);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/sessions/:id/complete — mark session as finished
+router.post('/:id/complete', async (req, res) => {
+  try {
+    await query(
+      'UPDATE training_sessions SET completed_at = NOW() WHERE id = $1',
+      [req.params.id]
+    );
+    res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

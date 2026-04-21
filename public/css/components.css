@@ -679,6 +679,48 @@ tbody td {
   align-items: center;
 }
 
+/* Mobile: chart above table, full-width stacked */
+.analytics-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.analytics-chart-panel,
+.analytics-table-panel {
+  min-width: 0;
+}
+
+/* Desktop: chart is main focus (left), table is sidebar (right) */
+@media (min-width: 900px) {
+  .analytics-layout {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  .analytics-chart-panel {
+    flex: 3;          /* takes ~65% of width */
+    min-width: 0;
+    position: sticky;
+    top: 16px;
+  }
+
+  .analytics-table-panel {
+    flex: 2;          /* takes ~35% of width */
+    min-width: 0;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+  }
+
+  /* Tighter table padding in sidebar */
+  .analytics-table-panel .exercise-data-table th,
+  .analytics-table-panel .exercise-data-table td {
+    padding: 6px 8px;
+    font-size: 0.78rem;
+  }
+}
+
 .filter-select-sm {
   padding: 6px 10px;
   font-size: 0.82rem;
@@ -687,6 +729,13 @@ tbody td {
 .chart-body {
   padding: 16px;
   min-height: 80px;
+}
+
+.loading-inline {
+  padding: 24px 16px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-style: italic;
 }
 
 .chart-controls {

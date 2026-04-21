@@ -20,7 +20,6 @@ export async function renderAthleteExercise(app, athleteId, liftType) {
 
   const title = liftType.charAt(0).toUpperCase() + liftType.slice(1);
 
-  // Compute e1RM for each set
   const data = rawData.map(row => ({
     ...row,
     e1rm: (row.load_kg && row.reps && row.actual_rpe)
@@ -28,7 +27,6 @@ export async function renderAthleteExercise(app, athleteId, liftType) {
       : null
   }));
 
-  // Unique filter options from data
   const uniqueReps = [...new Set(data.map(r => r.reps).filter(Boolean))].sort((a, b) => a - b);
   const uniqueRpe  = [...new Set(data.map(r => r.actual_rpe).filter(Boolean))].sort((a, b) => a - b);
   const uniqueType = [...new Set(data.map(r => r.set_type).filter(Boolean))];
@@ -64,31 +62,38 @@ export async function renderAthleteExercise(app, athleteId, liftType) {
         <button class="btn btn-secondary btn-sm" id="f-clear">Clear</button>
       </div>
 
-      <!-- Data table -->
-      <div class="section" style="margin-bottom:24px">
-        <div class="section-header"><span class="section-title">All Sets</span></div>
-        <div class="section-body" style="padding:0">
-          <div class="table-wrap" id="exercise-table-wrap">
-            <!-- rendered by JS -->
+      <!-- Analytics layout: stacked mobile, side-by-side desktop -->
+      <div class="analytics-layout">
+
+        <!-- Chart — always first/main -->
+        <div class="analytics-chart-panel">
+          <div class="section">
+            <div class="section-header">
+              <span class="section-title">Estimated 1RM Over Time</span>
+            </div>
+            <div class="section-body chart-body" id="e1rm-chart-wrap">
+              <!-- rendered by JS -->
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- e1RM chart (below table) -->
-      <div class="section">
-        <div class="section-header">
-          <span class="section-title">Estimated 1RM Over Time</span>
+        <!-- Table — below chart on mobile, sidebar on desktop -->
+        <div class="analytics-table-panel">
+          <div class="section">
+            <div class="section-header"><span class="section-title">All Sets</span></div>
+            <div class="section-body" style="padding:0">
+              <div class="table-wrap" id="exercise-table-wrap">
+                <!-- rendered by JS -->
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="section-body chart-body" id="e1rm-chart-wrap">
-          <!-- rendered by JS -->
-        </div>
+
       </div>
     </div>`;
 
-  // ── State ──────────────────────────────────────────────────────────
   let filtered = [...data];
 
-  // ── Helpers ────────────────────────────────────────────────────────
   function getFilters() {
     return {
       type:     document.getElementById('f-type')?.value || '',
@@ -120,16 +125,13 @@ export async function renderAthleteExercise(app, athleteId, liftType) {
       wrap.innerHTML = '<div class="empty-state" style="padding:32px"><div class="empty-state-text">No sets match the current filters</div></div>';
       return;
     }
-    const wellness = (v) => v
-      ? `<span class="badge badge-${v === 'Great' ? 'accent' : v === 'Good' ? 'info' : v === 'Fair' ? 'warning' : 'error'}">${v}</span>`
-      : '—';
 
+    // On desktop (sidebar) we skip wellness columns — keep the table narrow enough to fit
     wrap.innerHTML = `
       <table class="exercise-data-table">
         <thead>
           <tr>
-            <th>Date</th><th>Type</th><th>Reps</th><th>Load (kg)</th><th>RPE</th><th>e1RM</th>
-            <th>Sleep</th><th>Mood</th><th>Motivation</th><th>Soreness</th><th>Fatigue</th><th>Readiness</th><th>Notes</th>
+            <th>Date</th><th>Type</th><th>Reps</th><th>Load</th><th>RPE</th><th>e1RM</th><th>Notes</th>
           </tr>
         </thead>
         <tbody>
@@ -141,13 +143,7 @@ export async function renderAthleteExercise(app, athleteId, liftType) {
               <td>${r.load_kg ?? '—'}</td>
               <td>${r.actual_rpe ?? '—'}</td>
               <td>${r.e1rm != null ? r.e1rm + ' kg' : '—'}</td>
-              <td>${wellness(r.sleep)}</td>
-              <td>${wellness(r.mood)}</td>
-              <td>${wellness(r.motivation)}</td>
-              <td>${wellness(r.soreness)}</td>
-              <td>${wellness(r.fatigue)}</td>
-              <td>${wellness(r.readiness)}</td>
-              <td class="notes-cell">${r.notes ? `<span title="${r.notes}">${r.notes.slice(0, 40)}${r.notes.length > 40 ? '…' : ''}</span>` : '—'}</td>
+              <td class="notes-cell">${r.athlete_notes ? `<span title="${r.athlete_notes}">${r.athlete_notes.slice(0, 30)}${r.athlete_notes.length > 30 ? '…' : ''}</span>` : '—'}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -161,8 +157,8 @@ export async function renderAthleteExercise(app, athleteId, liftType) {
       return;
     }
 
-    const W = wrap.clientWidth || 600;
-    const H = 220;
+    const W = wrap.clientWidth || 500;
+    const H = 240;
     const PAD = { top: 16, right: 24, bottom: 40, left: 56 };
     const plotW = W - PAD.left - PAD.right;
     const plotH = H - PAD.top - PAD.bottom;
@@ -234,11 +230,9 @@ export async function renderAthleteExercise(app, athleteId, liftType) {
     renderLineChart(wrap, points, 'e1RM (kg)', '#22c55e');
   }
 
-  // ── Initial render ─────────────────────────────────────────────────
   renderTable();
   renderE1rmChart();
 
-  // ── Event listeners ────────────────────────────────────────────────
   ['f-type','f-reps','f-rpe','f-date-from','f-date-to'].forEach(id => {
     document.getElementById(id)?.addEventListener('change', applyFilters);
   });
@@ -249,5 +243,8 @@ export async function renderAthleteExercise(app, athleteId, liftType) {
     applyFilters();
   });
 
-  window.addEventListener('resize', renderE1rmChart, { once: true });
+  // Re-render chart on resize for correct width calculation
+  const resizeObserver = new ResizeObserver(() => renderE1rmChart());
+  const chartPanel = document.querySelector('.analytics-chart-panel');
+  if (chartPanel) resizeObserver.observe(chartPanel);
 }

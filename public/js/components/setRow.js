@@ -40,7 +40,7 @@ function rpeControlHtml(selectedRpe, targetRpe, locked) {
     <div class="rpe-control">
       <button type="button" class="rpe-adj-btn rpe-minus" aria-label="Decrease RPE" ${dis}>−</button>
       <input type="number" class="set-input rpe-input ${cls} ${colorCls}" value="${val}"
-        step="0.5" min="5" max="10" placeholder="—" inputmode="decimal" ${dis}>
+        step="0.5" min="0" max="10" placeholder="—" inputmode="decimal" ${dis}>
       <button type="button" class="rpe-adj-btn rpe-plus" aria-label="Increase RPE" ${dis}>+</button>
     </div>`;
 }
@@ -93,8 +93,8 @@ export function attachSetRowListeners(rowEl, onRpeChange) {
       if (val) rpeInput.classList.add(rpePillClass(parseFloat(val)));
     };
     rowEl.querySelector('.rpe-minus')?.addEventListener('click', () => {
-      const val = parseFloat(rpeInput.value) || 5;
-      rpeInput.value = Math.max(5, Math.round((val - 0.5) * 2) / 2);
+      const val = parseFloat(rpeInput.value) || 0;
+      rpeInput.value = Math.max(0, Math.round((val - 0.5) * 2) / 2);
       rpeInput.classList.remove('prescribed');
       rpeInput.classList.add('saved');
       updateRpeColor(rpeInput.value);
@@ -102,7 +102,7 @@ export function attachSetRowListeners(rowEl, onRpeChange) {
       if (onRpeChange) onRpeChange(parseFloat(rpeInput.value));
     });
     rowEl.querySelector('.rpe-plus')?.addEventListener('click', () => {
-      const val = parseFloat(rpeInput.value) || 5;
+      const val = parseFloat(rpeInput.value) || 0;
       rpeInput.value = Math.min(10, Math.round((val + 0.5) * 2) / 2);
       rpeInput.classList.remove('prescribed');
       rpeInput.classList.add('saved');
@@ -147,10 +147,11 @@ export function attachSetRowListeners(rowEl, onRpeChange) {
 }
 
 export function readSetRowValues(rowEl) {
+  const rpeRaw = rowEl.querySelector('.rpe-input')?.value;
   return {
     reps:          parseInt(rowEl.querySelector('.reps-input')?.value) || null,
     load_kg:       parseFloat(rowEl.querySelector('.load-input')?.value) || null,
-    actual_rpe:    parseFloat(rowEl.querySelector('.rpe-input')?.value) || null,
+    actual_rpe:    rpeRaw !== '' && rpeRaw != null ? parseFloat(rpeRaw) : null,
     athlete_notes: rowEl.querySelector('.set-notes-input')?.value || null
   };
 }

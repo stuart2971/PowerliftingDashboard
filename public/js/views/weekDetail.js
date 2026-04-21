@@ -24,11 +24,8 @@ export async function renderWeekDetail(app, weekId) {
     <div class="page">
       <div class="page-header">
         <div class="page-header-left">
-          <button class="btn btn-secondary btn-sm" onclick="history.back()">← Back</button>
-          <div style="margin-top:8px">
-            <h1 class="page-title">Week ${week.week_number}${week.label ? ' — ' + week.label : ''}</h1>
-            <div class="page-subtitle">${fullProgram.name}</div>
-          </div>
+          <h1 class="page-title">Week ${week.week_number}${week.label ? ' — ' + week.label : ''}</h1>
+          <div class="page-subtitle">${fullProgram.name}</div>
         </div>
       </div>
 
@@ -44,10 +41,7 @@ export async function renderWeekDetail(app, weekId) {
     card.addEventListener('click', (e) => {
       if (e.target.closest('button')) return;
       const sessionId = card.dataset.sessionId;
-      const dayId = card.dataset.dayId;
-      if (sessionId) {
-        navigate(`/session/${sessionId}`);
-      }
+      if (sessionId) navigate(`/session/${sessionId}`);
     });
   });
 
@@ -72,8 +66,8 @@ export async function renderWeekDetail(app, weekId) {
 }
 
 function renderDayCard(day, session) {
-  const isLogged = !!session;
-  const completedSets = session ? '(tap to view)' : '';
+  const isComplete = !!(session?.completed_at);
+  const hasSession = !!session;
 
   const exerciseSummary = day.exercises?.map(ex => `
     <div class="week-day-exercise">
@@ -82,17 +76,17 @@ function renderDayCard(day, session) {
   ).join('') || '';
 
   return `
-    <div class="week-day-card${isLogged ? ' logged' : ''}" data-day-id="${day.id}" ${session ? `data-session-id="${session.id}"` : ''}>
+    <div class="week-day-card" data-day-id="${day.id}" ${session ? `data-session-id="${session.id}"` : ''}>
       <div class="week-day-header">
         <div>
           <div class="week-day-title">Day ${day.day_number}${day.label ? ' — ' + day.label : ''}</div>
-          ${session ? `<div class="week-day-date">${formatDate(session.session_date)}</div>` : ''}
         </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          ${isLogged
-            ? `<span class="badge badge-accent">Logged</span>
-               <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();window.location.hash='#/session/${session.id}'">Edit →</button>`
-            : `<button class="btn btn-primary btn-sm day-start-btn" data-day-id="${day.id}">Start</button>`
+        <div>
+          ${isComplete
+            ? `<button class="btn btn-secondary btn-sm">Completed</button>`
+            : hasSession
+              ? `<button class="btn btn-primary btn-sm day-start-btn" data-day-id="${day.id}">Continue</button>`
+              : `<button class="btn btn-primary btn-sm day-start-btn" data-day-id="${day.id}">Start</button>`
           }
         </div>
       </div>

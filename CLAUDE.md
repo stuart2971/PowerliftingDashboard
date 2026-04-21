@@ -37,6 +37,11 @@ Available gstack skills:
 - `/gstack-upgrade` — Upgrade gstack to the latest version
 - `/learn` — Manage project learnings
 
+## Session Preferences
+
+- **After every response:** Always end with a "Next steps" section — list the next logical actions (skills or otherwise) with a one-line explanation of each. Do this after every skill AND every regular response, without exception.
+- **Wireframes:** Whenever a wireframe HTML file is created or modified, immediately open it in the default browser using `start <path>` (Windows). Never skip this.
+
 ## Skill routing
 
 When the user's request matches an available skill, ALWAYS invoke it using the Skill

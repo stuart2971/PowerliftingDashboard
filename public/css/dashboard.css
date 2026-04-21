@@ -413,8 +413,8 @@
 }
 
 .set-row:last-child { border-bottom: none; }
-.set-row.top-set { background: var(--bg-card-alt); border-left: 3px solid var(--border); }
-.set-row.backdown { border-left: 3px solid transparent; }
+.set-row.top-set { background: var(--bg-card-alt); }
+.set-row.backdown { }
 
 .set-col {
   display: flex;
@@ -1102,7 +1102,6 @@
 }
 
 .week-day-card:hover { box-shadow: var(--shadow-lg); }
-.week-day-card.logged { border-left: 4px solid var(--accent); }
 
 .week-day-header {
   display: flex;
@@ -1173,3 +1172,499 @@
 .skel-btn  { height: 34px; width: 90px; flex-shrink: 0; }
 .skel-card { height: 90px; margin-bottom: 14px; }
 .skel-tall { height: 200px; }
+
+/* ── Utility ──────────────────────────────────────────────────── */
+.btn-block {
+  width: 100%;
+  display: block;
+  text-align: center;
+}
+
+/* ── Today Card Footer ────────────────────────────────────────── */
+.today-card-footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-card-alt);
+}
+
+/* ── Program Complete Card ────────────────────────────────────── */
+.program-complete-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 32px 24px;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+.program-complete-icon {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+}
+
+.program-complete-title {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+
+.program-complete-body {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+/* ── Session Questionnaire Collapse ───────────────────────────── */
+.session-questionnaire-wrap {
+  margin-bottom: 8px;
+}
+
+.questionnaire-toggle {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  padding: 12px 4px;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.questionnaire-toggle:hover { color: var(--text-primary); }
+
+/* ── Exercise Card (one at a time) ───────────────────────────── */
+.exercise-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.exercise-card-top {
+  position: relative;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card-alt);
+}
+
+.exercise-card-meta {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent-hover);
+  margin-bottom: 4px;
+}
+
+.exercise-card-name {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  line-height: 1.1;
+  padding-right: 48px; /* room for ⋮ menu button */
+}
+
+.exercise-card-sets {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── ⋮ Menu ───────────────────────────────────────────────────── */
+.exercise-card-menu-wrap {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+.exercise-card-menu-btn {
+  width: 44px;
+  height: 44px;
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  transition: background var(--transition);
+}
+
+.exercise-card-menu-btn:hover { background: var(--bg-input); color: var(--text-primary); }
+
+.exercise-card-menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  min-width: 180px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 12px 16px;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.menu-item:hover { background: var(--bg-card-alt); }
+.menu-item + .menu-item { border-top: 1px solid var(--border); }
+
+/* ── Set Card Block ───────────────────────────────────────────── */
+.set-card-block {
+  background: var(--bg-card-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.set-card-block.backdown {
+  opacity: 0.9;
+}
+
+/* Logged set — dimmed summary */
+.set-card-block.logged {
+  opacity: 0.7;
+  padding: 12px 16px;
+}
+
+.set-card-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.set-card-num {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  min-width: 44px;
+}
+
+.set-card-logged-vals {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-style: italic;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.set-unlog-btn {
+  background: none;
+  border: none;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  transition: color var(--transition);
+  min-height: 32px;
+}
+
+.set-unlog-btn:hover { color: var(--text-primary); text-decoration: underline; }
+
+/* Active set header (type label + prescription) */
+.set-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.set-card-target {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-style: italic;
+}
+
+/* Type label — TOP SET / BACK-OFF */
+.set-type-label {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.set-type-label.active {
+  color: var(--accent);
+}
+
+/* Each input row: label on left, ±input± on right — stacked vertically */
+.set-card-input-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+
+.set-card-input-row:last-of-type {
+  border-bottom: none;
+  margin-bottom: 14px;
+}
+
+.set-card-label {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  min-width: 70px;
+  flex-shrink: 0;
+}
+
+.set-card-adjrow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+/* Future (collapsed) set */
+.set-card-block.future {
+  opacity: 0.6;
+  padding: 10px 14px;
+}
+
+.set-future-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.set-future-prescription {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+/* ± adjustment buttons — 44px touch targets */
+.adj-btn {
+  min-width: 44px;
+  min-height: 44px;
+  width: 44px;
+  height: 44px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background var(--transition);
+  line-height: 1;
+  padding: 0;
+}
+
+.adj-btn:hover { background: var(--border); }
+.adj-btn:active { background: var(--accent); color: #fff; }
+
+.set-input {
+  flex: 1;
+  min-width: 80px;
+  max-width: 120px;
+  text-align: center;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-style: italic;
+  color: var(--text-primary);
+  height: 44px;
+  padding: 0 4px;
+  -moz-appearance: textfield;
+}
+
+.set-input::-webkit-outer-spin-button,
+.set-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+.set-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: #fff;
+}
+
+.set-input.calculated { color: var(--accent-hover); font-style: italic; }
+.set-input.saved      { color: var(--text-primary); }
+
+.set-card-empty {
+  padding: 16px;
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+}
+
+/* ── Set notes ─────────────────────────────────────────────────── */
+.set-card-notes-row {
+  padding: 10px 0 4px;
+}
+
+.set-notes-input {
+  width: 100%;
+  resize: none;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  padding: 8px 10px;
+  line-height: 1.4;
+  box-sizing: border-box;
+  transition: border-color var(--transition);
+}
+
+.set-notes-input::placeholder { color: var(--text-muted); }
+.set-notes-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: #fff;
+}
+
+/* Note shown on logged summary */
+.set-logged-note {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.4;
+  padding-left: 2px;
+}
+
+/* ── Dot Navigation ───────────────────────────────────────────── */
+.dot-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 0;
+  flex-wrap: wrap;
+}
+
+.dot-btn {
+  width: 44px;
+  height: 44px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.dot-inner {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: background var(--transition), transform 0.15s;
+  display: block;
+}
+
+.dot-btn.active .dot-inner {
+  background: var(--accent);
+  transform: scale(1.4);
+}
+
+.dot-btn.partial .dot-inner {
+  background: var(--accent-hover);
+  opacity: 0.5;
+}
+
+.dot-btn.done .dot-inner {
+  background: var(--accent);
+}
+
+.dot-btn:hover .dot-inner {
+  background: var(--accent);
+  opacity: 0.7;
+}
+
+/* ── Exercise Transition Bar ──────────────────────────────────── */
+.exercise-transition {
+  padding: 20px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-card-alt);
+  text-align: center;
+}
+
+.exercise-transition-label {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+
+/* ── Mobile adjustments for card sets ────────────────────────── */
+@media (max-width: 400px) {
+  .set-card-inputs { gap: 8px; }
+  .adj-btn { width: 40px; height: 40px; font-size: 1.1rem; }
+  .exercise-card-name { font-size: 1.3rem; }
+}
