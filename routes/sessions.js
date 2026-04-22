@@ -32,6 +32,34 @@ async function getFullSession(sessionId) {
     const leByPeId = {};
     for (const le of existingLeRes.rows) leByPeId[le.program_exercise_id] = le;
 
+    // ── Batch pre-fetch: all program_sets for every exercise in this day ──
+    const allPeIds = progExRes.rows.map(r => r.id);
+    const progSetsByPeId = {};
+    if (allPeIds.length > 0) {
+      const allProgSetsRes = await query(
+        'SELECT * FROM program_sets WHERE exercise_id = ANY($1) ORDER BY set_order',
+        [allPeIds]
+      );
+      for (const ps of allProgSetsRes.rows) {
+        if (!progSetsByPeId[ps.exercise_id]) progSetsByPeId[ps.exercise_id] = [];
+        progSetsByPeId[ps.exercise_id].push(ps);
+      }
+    }
+
+    // ── Batch pre-fetch: all logged_sets for every existing logged_exercise ──
+    const allLeIds = existingLeRes.rows.map(r => r.id);
+    const loggedSetsByLeId = {};
+    if (allLeIds.length > 0) {
+      const allLoggedSetsRes = await query(
+        'SELECT * FROM logged_sets WHERE logged_exercise_id = ANY($1) ORDER BY set_order, id',
+        [allLeIds]
+      );
+      for (const ls of allLoggedSetsRes.rows) {
+        if (!loggedSetsByLeId[ls.logged_exercise_id]) loggedSetsByLeId[ls.logged_exercise_id] = [];
+        loggedSetsByLeId[ls.logged_exercise_id].push(ls);
+      }
+    }
+
     // ── 1. Add new exercises / update name+order of existing ones ──
     for (const pe of progExRes.rows) {
       const le = leByPeId[pe.id];
@@ -42,11 +70,8 @@ async function getFullSession(sessionId) {
           [sessionId, pe.id, pe.name, pe.exercise_order]
         );
         const leId = leResult.rows[0].id;
-        const setsRes = await query(
-          'SELECT * FROM program_sets WHERE exercise_id = $1 ORDER BY set_order',
-          [pe.id]
-        );
-        for (const s of setsRes.rows) {
+        const progSets = progSetsByPeId[pe.id] || [];
+        for (const s of progSets) {
           await query(
             'INSERT INTO logged_sets (logged_exercise_id, program_set_id, set_order, set_type, reps, target_rpe) VALUES ($1,$2,$3,$4,$5,$6)',
             [leId, s.id, s.set_order, s.set_type, s.reps, s.target_rpe]
@@ -62,22 +87,16 @@ async function getFullSession(sessionId) {
         }
 
         // ── 2. Sync sets for this exercise ──────────────────────────
-        const progSetsRes = await query(
-          'SELECT * FROM program_sets WHERE exercise_id = $1 ORDER BY set_order',
-          [pe.id]
-        );
-        const currentPsIds = new Set(progSetsRes.rows.map(r => r.id));
+        const progSets = progSetsByPeId[pe.id] || [];
+        const currentPsIds = new Set(progSets.map(r => r.id));
 
-        const loggedSetsRes = await query(
-          'SELECT * FROM logged_sets WHERE logged_exercise_id = $1 ORDER BY set_order, id',
-          [le.id]
-        );
+        const loggedSets = loggedSetsByLeId[le.id] || [];
         const lsByPsId = {};
-        for (const ls of loggedSetsRes.rows) {
+        for (const ls of loggedSets) {
           if (ls.program_set_id) lsByPsId[ls.program_set_id] = ls;
         }
 
-        for (const ps of progSetsRes.rows) {
+        for (const ps of progSets) {
           const ls = lsByPsId[ps.id];
           if (!ls) {
             // New set added by coach — insert it
@@ -103,7 +122,7 @@ async function getFullSession(sessionId) {
         }
 
         // Remove unlogged sets for program_sets the coach deleted
-        for (const ls of loggedSetsRes.rows) {
+        for (const ls of loggedSets) {
           if (ls.program_set_id && !currentPsIds.has(ls.program_set_id) && ls.actual_rpe == null) {
             await query('DELETE FROM logged_sets WHERE id = $1', [ls.id]);
           }
@@ -115,11 +134,8 @@ async function getFullSession(sessionId) {
     // Only if the athlete hasn't logged any data for them yet
     for (const le of existingLeRes.rows) {
       if (!currentPeIds.has(le.program_exercise_id)) {
-        const orphanSets = await query(
-          'SELECT id, actual_rpe, load_kg FROM logged_sets WHERE logged_exercise_id = $1',
-          [le.id]
-        );
-        const hasRealData = orphanSets.rows.some(s => s.actual_rpe != null || s.load_kg != null);
+        const orphanSets = loggedSetsByLeId[le.id] || [];
+        const hasRealData = orphanSets.some(s => s.actual_rpe != null || s.load_kg != null);
         if (!hasRealData) {
           await query('DELETE FROM logged_sets WHERE logged_exercise_id = $1', [le.id]);
           await query('DELETE FROM logged_exercises WHERE id = $1', [le.id]);
@@ -135,12 +151,23 @@ async function getFullSession(sessionId) {
   );
   const exercises = exRes.rows;
 
-  for (const ex of exercises) {
+  // Batch fetch all sets in one query instead of one-per-exercise
+  if (exercises.length > 0) {
+    const exIds = exercises.map(e => e.id);
     const setRes = await query(
-      'SELECT * FROM logged_sets WHERE logged_exercise_id = $1 ORDER BY set_order, id',
-      [ex.id]
+      'SELECT * FROM logged_sets WHERE logged_exercise_id = ANY($1) ORDER BY logged_exercise_id, set_order, id',
+      [exIds]
     );
-    ex.sets = setRes.rows;
+    const setsByExId = {};
+    for (const s of setRes.rows) {
+      if (!setsByExId[s.logged_exercise_id]) setsByExId[s.logged_exercise_id] = [];
+      setsByExId[s.logged_exercise_id].push(s);
+    }
+    for (const ex of exercises) {
+      ex.sets = setsByExId[ex.id] || [];
+    }
+  } else {
+    for (const ex of exercises) ex.sets = [];
   }
 
   session.exercises = exercises;

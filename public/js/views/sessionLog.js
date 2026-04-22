@@ -5,6 +5,16 @@ import { attachSetRowListeners, readSetRowValues } from '../components/setRow.js
 import { calcE1RM, calcBackdownLoad } from '../rpe.js';
 import { showHistoryModal } from '../components/exerciseHistory.js';
 
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export async function renderSessionLog(app, sessionId) {
   let session = await sessionAPI.get(sessionId);
 
@@ -176,7 +186,7 @@ export async function renderSessionLog(app, sessionId) {
             <span class="set-card-logged-vals">${s.load_kg}kg × ${s.reps}${rpeStr}</span>
             <button class="set-unlog-btn" data-set-id="${s.id}" title="Undo">undo</button>
           </div>
-          ${s.athlete_notes ? `<div class="set-logged-note">${s.athlete_notes}</div>` : ''}
+          ${s.athlete_notes ? `<div class="set-logged-note">${escapeHtml(s.athlete_notes)}</div>` : ''}
         </div>`;
     }
 
@@ -418,9 +428,14 @@ export async function renderSessionLog(app, sessionId) {
 
     // Transition: finish from last exercise (all sets complete — safe to mark done)
     cardEl.querySelector('#finish-early-btn')?.addEventListener('click', async () => {
-      try { await sessionAPI.complete(sessionId); } catch { /* non-critical */ }
-      toast('Session complete!', 'success');
-      navigate('/dashboard');
+      try {
+        await sessionAPI.complete(sessionId);
+        toast('Session complete!', 'success');
+        navigate('/dashboard');
+      } catch (err) {
+        console.error('Failed to mark session complete:', err);
+        toast('Could not save session completion — please try again', 'error');
+      }
     });
   }
 
@@ -587,9 +602,14 @@ export async function renderSessionLog(app, sessionId) {
     });
 
     document.getElementById('finish-btn').addEventListener('click', async () => {
-      try { await sessionAPI.complete(sessionId); } catch { /* non-critical */ }
-      toast('Session complete!', 'success');
-      navigate('/dashboard');
+      try {
+        await sessionAPI.complete(sessionId);
+        toast('Session complete!', 'success');
+        navigate('/dashboard');
+      } catch (err) {
+        console.error('Failed to mark session complete:', err);
+        toast('Could not save session completion — please try again', 'error');
+      }
     });
 
     if (session.exercises?.length) {
