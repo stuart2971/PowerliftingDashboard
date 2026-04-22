@@ -119,7 +119,7 @@ export async function renderSessionLog(app, sessionId) {
           : isCurrent
             ? 'dot-btn active'
             : 'dot-btn';
-      return `<button class="${cls}" data-ex-idx="${i}" aria-label="${ex.exercise_name}"><span class="dot-inner"></span></button>`;
+      return `<button class="${cls}" data-ex-idx="${i}" aria-label="${escapeHtml(ex.exercise_name)}"><span class="dot-inner"></span></button>`;
     }).join('');
 
     nav.querySelectorAll('.dot-btn').forEach(btn => {
@@ -283,7 +283,7 @@ export async function renderSessionLog(app, sessionId) {
       <div class="exercise-card" id="ex-${ex.id}">
         <div class="exercise-card-top">
           <div class="exercise-card-meta">${exNumText}</div>
-          <div class="exercise-card-name">${ex.exercise_name}</div>
+          <div class="exercise-card-name">${escapeHtml(ex.exercise_name)}</div>
           <div class="exercise-card-menu-wrap">
             <button class="exercise-card-menu-btn" type="button" aria-label="Exercise options">⋮</button>
             <div class="exercise-card-menu-dropdown" id="menu-${ex.id}" style="display:none">
